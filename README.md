@@ -1,4 +1,4 @@
-# neospring
+# neospring [![Build Status](https://github.com/brandur/neospring/workflows/neospring%20CI/badge.svg)](https://github.com/brandur/neospring/actions)
 
 A toy [Spring '83 implementation](https://www.robinsloan.com/lab/specifying-spring-83/). See also [GitHub repo](https://github.com/robinsloan/spring-83) and the [current specification](https://github.com/robinsloan/spring-83/blob/main/draft-20220629.md#key-format).
 
