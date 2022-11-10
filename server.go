@@ -17,19 +17,20 @@ import (
 )
 
 const (
-	MaxContentSize     = 2217
+	// Maximum size in bytes that any board post is allowed to be, as per for
+	// the Spring '83 specification. This magic number in particular was chosen
+	// because the internet's first ever web page was 2217 bytes in size.
+	MaxContentSize = 2217
+
+	// When calculating whether a post is expired to not yet valid, the amount
+	// of tolerance to add to the calculation to allow for clock skew. This will
+	// make the most difference as brand new posts are pushed to other servers
+	// whose clock might be a little behind.
 	TimestampTolerance = 5 * time.Minute
 )
 
-const (
-	MessageKeyUpdated = "Content for the given key has been updated successfully."
-)
-
-const (
-	TestPrivateKey = "3371f8b011f51632fea33ed0a3688c26a45498205c6097c352bd4d079d224419"
-	TestPublicKey  = "ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0583"
-)
-
+// Error messages returned by various server errors.
+//
 //nolint:lll
 var (
 	ErrMessageContentTooLarge           = fmt.Sprintf("Content is larger than the maximum allowed size of %d bytes.", MaxContentSize)
@@ -48,6 +49,18 @@ var (
 	ErrMessageTimestampOlderThanCurrent = "Content <time> timestamp is older than the timestamp already registered under the given key."
 	ErrMessageTimestampTooOld           = "Content <time> timestamp should not be more than 22 days old."
 	ErrMessageTimestampUnparseable      = "Could not parse timestamp tag. Tag should in standard format and UTC like `<time datetime=\"YYYY-MM-DDTHH:MM:SSZ\">`."
+)
+
+const (
+	MessageKeyUpdated = "Content for the given key has been updated successfully."
+)
+
+// Test private/public keypair defined by the Spring '83 specification. Attempts
+// to post content for it are always rejected, and requests for it always return
+// some randomized test content to help write client integrations.
+const (
+	TestPrivateKey = "3371f8b011f51632fea33ed0a3688c26a45498205c6097c352bd4d079d224419"
+	TestPublicKey  = "ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0583"
 )
 
 type BoardNotFoundError struct {
@@ -304,16 +317,6 @@ func (s *Server) randomizeTestKeyBoard(ctx context.Context) (*MemoryBoard, error
 	return board, nil
 }
 
-type ServerResponse struct {
-	Body       []byte
-	Header     http.Header
-	StatusCode int
-}
-
-func NewServerResponse(statusCode int, body []byte, header http.Header) *ServerResponse {
-	return &ServerResponse{Body: body, Header: header, StatusCode: statusCode}
-}
-
 func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*ServerResponse, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -348,6 +351,9 @@ func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*Ser
 	})
 }
 
+// Implements the error interface and provides an easy way to return a
+// particular status code and error message that's interpreted by `wrapEndpoint`
+// and written back to an `http.ResponseWriter`.
 type ServerError struct {
 	Message    string
 	StatusCode int
@@ -361,6 +367,19 @@ func (e *ServerError) Error() string {
 	return e.Message
 }
 
+// Wraps up an HTTP status code, headers, and body and which can be returned by
+// handlers as a more testable alternative to a HTTP response. Interpreted by
+// `wrapEndpoint` and written back to an `http.ResponseWriter`.
+type ServerResponse struct {
+	Body       []byte
+	Header     http.Header
+	StatusCode int
+}
+
+func NewServerResponse(statusCode int, body []byte, header http.Header) *ServerResponse {
+	return &ServerResponse{Body: body, Header: header, StatusCode: statusCode}
+}
+
 func generateContent() string {
 	return "this is some test content and it should probably be expanded upon"
 }
@@ -372,6 +391,8 @@ const timestampFormat = "2006-01-02T15:04:05Z"
 // so we don't bother with generous allowances normally tolerated for HTML.
 var timestampRE = regexp.MustCompile(`<time datetime="([1-9]\d{3}-(0[1-9]|1[0-2])-\d\dT\d\d:\d\d:\d\dZ)">`)
 
+// Checks to see if some content is only a timestamp tag, which is akin to a
+// deleted board which will respond with a 404.
 func isTimestampOnly(content string) bool {
 	match := timestampRE.FindStringSubmatch(content)
 	if match == nil {
