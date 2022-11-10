@@ -334,7 +334,7 @@ func TestServerWrapEndpoint(t *testing.T) {
 
 		require.Equal(t, http.StatusCreated, recorder.Code)
 		require.Equal(t, "a body", recorder.Body.String())
-		require.Equal(t, "text/html", recorder.Header().Get("Content-Type"))
+		require.Equal(t, "text/html;charset=utf-8", recorder.Header().Get("Content-Type"))
 		require.Equal(t, "83", recorder.Header().Get("Spring-Version"))
 	}))
 
@@ -347,7 +347,7 @@ func TestServerWrapEndpoint(t *testing.T) {
 
 		require.Equal(t, http.StatusBadRequest, recorder.Code)
 		require.Equal(t, "an error", recorder.Body.String())
-		require.Equal(t, "text/html", recorder.Header().Get("Content-Type"))
+		require.Equal(t, "text/html;charset=utf-8", recorder.Header().Get("Content-Type"))
 	}))
 
 	t.Run("InternalError", setup(func(t *testing.T) {
@@ -359,7 +359,7 @@ func TestServerWrapEndpoint(t *testing.T) {
 
 		require.Equal(t, http.StatusInternalServerError, recorder.Code)
 		require.Equal(t, ErrMessageInternalError, recorder.Body.String())
-		require.Equal(t, "text/html", recorder.Header().Get("Content-Type"))
+		require.Equal(t, "text/html;charset=utf-8", recorder.Header().Get("Content-Type"))
 	}))
 }
 

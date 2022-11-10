@@ -326,7 +326,7 @@ func (s *Server) randomizeTestKeyBoard(ctx context.Context) (*MemoryBoard, error
 // error is encountered.
 func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*ServerResponse, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html")
+		w.Header().Set("Content-Type", "text/html;charset=utf-8")
 
 		resp, err := h(r.Context(), r)
 		if err != nil {
