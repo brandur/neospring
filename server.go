@@ -321,6 +321,19 @@ func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*Ser
 	})
 }
 
+type ServerError struct {
+	Message    string
+	StatusCode int
+}
+
+func NewServerError(statusCode int, message string) *ServerError {
+	return &ServerError{StatusCode: statusCode, Message: message}
+}
+
+func (e *ServerError) Error() string {
+	return e.Message
+}
+
 func generateContent() string {
 	return "this is some test content and it should probably be expanded upon"
 }
