@@ -2,7 +2,9 @@
 
 A toy [Spring '83 implementation](https://www.robinsloan.com/lab/specifying-spring-83/). See also [GitHub repo](https://github.com/robinsloan/spring-83) and the [current specification](https://github.com/robinsloan/spring-83/blob/main/draft-20220629.md#key-format).
 
-The implementation is largely completely, but still need a persistent backend and shoring up operationally.
+The implementation is largely complete, but still need a persistent backend and shoring up operationally.
+
+I know there's other Go-based implementations, but this is a personal one just written for fun. Don't rely on it for long-term production use.
 
 ## Usage
 
