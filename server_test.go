@@ -276,7 +276,7 @@ func TestServerHandlePutKey(t *testing.T) {
 		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampMissing), err)
 	}))
 
-	t.Run("TimestampMissing", setup(func(t *testing.T) {
+	t.Run("TimestampUnparseable", setup(func(t *testing.T) {
 		keyPair := MustParseKeyPair(samplePrivateKey, samplePublicKey)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, `<time datetime="2022-11-09T10:11:79Z"> some other content`)) //nolint:lll
