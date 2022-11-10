@@ -3,6 +3,9 @@ package main
 import "golang.org/x/exp/maps"
 
 const (
+	// InfernalPublicKey is a special public key published in the Spring '83
+	// spec for which a server must respond that the key is banned to prove that
+	// the server implements a deny list.
 	InfernalPublicKey = "d17eef211f510479ee6696495a2589f7e9fb055c2576749747d93444883e0123"
 )
 
