@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
 )
 
@@ -81,6 +82,7 @@ type Server struct {
 	boardStore  BoardStore
 	denyList    DenyList
 	httpServer  *http.Server
+	logger      *logrus.Logger
 	router      *mux.Router
 	testKeyPair *KeyPair
 	timeNow     func() time.Time
@@ -90,6 +92,7 @@ func NewServer(boardStore BoardStore, denyList DenyList, port int) *Server {
 	server := &Server{
 		boardStore:  boardStore,
 		denyList:    denyList,
+		logger:      logrus.New(),
 		testKeyPair: MustParseKeyPair(TestPrivateKey, TestPublicKey),
 		timeNow:     time.Now,
 	}
@@ -116,7 +119,7 @@ func NewServer(boardStore BoardStore, denyList DenyList, port int) *Server {
 }
 
 func (s *Server) Start() error {
-	fmt.Printf("Listening on %s\n", s.httpServer.Addr)
+	s.logger.Infof("Listening on %s\n", s.httpServer.Addr)
 
 	if err := s.httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return xerrors.Errorf("error listening on %s: %w", s.httpServer.Addr, err)
@@ -317,6 +320,10 @@ func (s *Server) randomizeTestKeyBoard(ctx context.Context) (*MemoryBoard, error
 	return board, nil
 }
 
+// Provides a wrapper around endpoints that makes them more testable by allowing
+// them to return response and error structs instead of writing to RAW HTTP
+// primitives. Also implements returning a 500 internal server when an unhandled
+// error is encountered.
 func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*ServerResponse, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/plain")
@@ -325,11 +332,13 @@ func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*Ser
 		if err != nil {
 			var serverErr *ServerError
 			if errors.As(err, &serverErr) {
+				s.logger.Infof("User error: %v", err)
 				w.WriteHeader(serverErr.StatusCode)
 				_, _ = w.Write([]byte(err.Error()))
 				return
 			}
 
+			s.logger.Errorf("Internal server error: %v", err)
 			w.WriteHeader(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(ErrMessageInternalError))
 			return
