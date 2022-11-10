@@ -23,6 +23,6 @@ func TestCORSMiddleware(t *testing.T) {
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Equal(t, "GET, OPTIONS, PUT", recorder.Header().Get("Access-Control-Allow-Methods"))
 	require.Equal(t, "*", recorder.Header().Get("Access-Control-Allow-Origin"))
-	require.Equal(t, "Content-Type, If-Modified-Since, Spring-Signature, Spring-Version", recorder.Header().Get("Access-Control-Allow-Headers"))
-	require.Equal(t, "Content-Type, Last-Modified, Spring-Signature, Spring-Version", recorder.Header().Get("Access-Control-Expose-Headers"))
+	require.Equal(t, "Content-Type, If-Modified-Since, Spring-Signature, Spring-Version", recorder.Header().Get("Access-Control-Allow-Headers")) //nolint:lll
+	require.Equal(t, "Content-Type, Last-Modified, Spring-Signature, Spring-Version", recorder.Header().Get("Access-Control-Expose-Headers"))    //nolint:lll
 }

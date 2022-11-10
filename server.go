@@ -30,20 +30,24 @@ const (
 	TestPublicKey  = "ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0583"
 )
 
+//nolint:lll
 var (
-	ErrContentTooLarge           = xerrors.Errorf("Content is larger than the maximum allowed size of %d bytes.", MaxContentSize)
-	ErrDeniedKey                 = xerrors.New("This key is denied.")
-	ErrInternalError             = xerrors.New("An internal error has occurred. Please report this to the server operator.")
-	ErrTestKey                   = xerrors.New("This request was made with Spring '83's test key, which is always rejected according to the specification.")
-	ErrSignatureBadLength        = xerrors.Errorf("Signature in the `Spring-Signature` header should be exactly %d bytes long.", ed25519.SignatureSize)
-	ErrSignatureInvalid          = xerrors.New("Payload contents could not be verified against the signature in the `Spring-Signature` header.")
-	ErrSignatureMissing          = xerrors.New("Missing `Spring-Signature` header which should contain a signature for the payload.")
-	ErrSignatureUnparseable      = xerrors.New("Signature in the `Spring-Singature` header could not be decoded from hex to binary.")
-	ErrTimestampInFuture         = xerrors.New("Content <time> timestamp should not be in the future.")
-	ErrTimestampMissing          = xerrors.New("Expected content to contain a timestamp tag like `<time datetime=\"YYYY-MM-DDTHH:MM:SSZ\">`.")
-	ErrTimestampOlderThanCurrent = xerrors.New("Content <time> timestamp is older than the timestamp already registered under the given key.")
-	ErrTimestampTooOld           = xerrors.New("Content <time> timestamp should not be more than 22 days old.")
-	ErrTimestampUnparseable      = xerrors.New("Could not parse timestamp tag. Tag should in standard format and UTC like `<time datetime=\"YYYY-MM-DDTHH:MM:SSZ\">`.")
+	ErrMessageContentTooLarge           = fmt.Sprintf("Content is larger than the maximum allowed size of %d bytes.", MaxContentSize)
+	ErrMessageDeniedKey                 = "This key is denied."
+	ErrMessageInternalError             = "An internal error has occurred. Please report this to the server operator."
+	ErrMessageKeyExpired                = "The given key is expired. The last four digits `MMYY` represent a month and year number which is now allowed to exceed the current month and year."
+	ErrMessageKeyInvalid                = "The given key is invalid. It should be exactly 64 characters in length and be suffixed with `83eMMYY` where `MM` is a valid month number and `YY` are the last two digits of a year."
+	ErrMessageKeyNotYetValid            = "The given key is not yet valid. The last four digits `MMYY` represent a month and year number which must be within two years of the current month and year."
+	ErrMessageTestKey                   = "This request was made with Spring '83's test key, which is always rejected according to the specification."
+	ErrMessageSignatureBadLength        = fmt.Sprintf("Signature in the `Spring-Signature` header should be exactly %d bytes long.", ed25519.SignatureSize)
+	ErrMessageSignatureInvalid          = "Payload contents could not be verified against the signature in the `Spring-Signature` header."
+	ErrMessageSignatureMissing          = "Missing `Spring-Signature` header which should contain a signature for the payload."
+	ErrMessageSignatureUnparseable      = "Signature in the `Spring-Signature` header could not be decoded from hex to binary."
+	ErrMessageTimestampInFuture         = "Content <time> timestamp should not be in the future."
+	ErrMessageTimestampMissing          = "Expected content to contain a timestamp tag like `<time datetime=\"YYYY-MM-DDTHH:MM:SSZ\">`."
+	ErrMessageTimestampOlderThanCurrent = "Content <time> timestamp is older than the timestamp already registered under the given key."
+	ErrMessageTimestampTooOld           = "Content <time> timestamp should not be more than 22 days old."
+	ErrMessageTimestampUnparseable      = "Could not parse timestamp tag. Tag should in standard format and UTC like `<time datetime=\"YYYY-MM-DDTHH:MM:SSZ\">`."
 )
 
 type BoardNotFoundError struct {
@@ -74,7 +78,7 @@ func NewServer(boardStore BoardStore, denyList DenyList, port int) *Server {
 		boardStore:  boardStore,
 		denyList:    denyList,
 		testKeyPair: MustParseKeyPair(TestPrivateKey, TestPublicKey),
-		timeNow:     func() time.Time { return time.Now() },
+		timeNow:     time.Now,
 	}
 
 	router := mux.NewRouter()
@@ -139,11 +143,20 @@ func (s *Server) handleGetKey(ctx context.Context, r *http.Request) (*ServerResp
 
 	_, err = parseKey(key, s.timeNow())
 	if err != nil {
-		return nil, NewServerError(http.StatusForbidden, err.Error())
+		switch {
+		case errors.Is(err, ErrKeyExpired):
+			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyExpired)
+		case errors.Is(err, ErrKeyInvalid):
+			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyInvalid)
+		case errors.Is(err, ErrKeyNotYetValid):
+			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyNotYetValid)
+		}
+
+		return nil, xerrors.Errorf("error parsing key: %w", err)
 	}
 
 	if s.denyList.Contains(key) {
-		return nil, NewServerError(http.StatusForbidden, ErrDeniedKey.Error())
+		return nil, NewServerError(http.StatusForbidden, ErrMessageDeniedKey)
 	}
 
 	board, err = s.boardStore.Get(ctx, key)
@@ -186,16 +199,25 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 	key := mux.Vars(r)["key"]
 
 	if key == s.testKeyPair.PublicKey {
-		return nil, NewServerError(http.StatusUnauthorized, ErrTestKey.Error())
+		return nil, NewServerError(http.StatusUnauthorized, ErrMessageTestKey)
 	}
 
 	keyBytes, err := parseKey(key, s.timeNow())
 	if err != nil {
-		return nil, NewServerError(http.StatusForbidden, err.Error())
+		switch {
+		case errors.Is(err, ErrKeyExpired):
+			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyExpired)
+		case errors.Is(err, ErrKeyInvalid):
+			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyInvalid)
+		case errors.Is(err, ErrKeyNotYetValid):
+			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyNotYetValid)
+		}
+
+		return nil, xerrors.Errorf("error parsing key: %w", err)
 	}
 
 	if s.denyList.Contains(key) {
-		return nil, NewServerError(http.StatusForbidden, ErrDeniedKey.Error())
+		return nil, NewServerError(http.StatusForbidden, ErrMessageDeniedKey)
 	}
 
 	content, err := io.ReadAll(r.Body)
@@ -205,40 +227,45 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 
 	// Spring '83 dictates a maximum content size of 2217 bytes.
 	if len(content) > MaxContentSize {
-		return nil, NewServerError(http.StatusRequestEntityTooLarge, ErrContentTooLarge.Error())
+		return nil, NewServerError(http.StatusRequestEntityTooLarge, ErrMessageContentTooLarge)
 	}
 
 	signatureStr := r.Header.Get("Spring-Signature")
 	if signatureStr == "" {
-		return nil, NewServerError(http.StatusBadRequest, ErrSignatureMissing.Error())
+		return nil, NewServerError(http.StatusBadRequest, ErrMessageSignatureMissing)
 	}
 
 	signature, err := hex.DecodeString(signatureStr)
 	if err != nil {
-		return nil, NewServerError(http.StatusBadRequest, ErrSignatureUnparseable.Error())
+		return nil, NewServerError(http.StatusBadRequest, ErrMessageSignatureUnparseable)
 	}
 
 	if len(signature) != ed25519.SignatureSize {
-		return nil, NewServerError(http.StatusBadRequest, ErrSignatureBadLength.Error())
+		return nil, NewServerError(http.StatusBadRequest, ErrMessageSignatureBadLength)
 	}
 
 	// Verify the signature early because it might prevent against other types
 	// of bad requests that might be more expensive to check.
 	if !ed25519.Verify(keyBytes, content, signature) {
-		return nil, NewServerError(http.StatusUnauthorized, ErrSignatureInvalid.Error())
+		return nil, NewServerError(http.StatusUnauthorized, ErrMessageSignatureInvalid)
 	}
 
-	timestamp, err := parseTimestamp(string(content))
+	match := timestampRE.FindStringSubmatch(string(content))
+	if match == nil {
+		return nil, NewServerError(http.StatusBadRequest, ErrMessageTimestampMissing)
+	}
+
+	timestamp, err := time.Parse(timestampFormat, match[1])
 	if err != nil {
-		return nil, NewServerError(http.StatusBadRequest, err.Error())
+		return nil, NewServerError(http.StatusBadRequest, ErrMessageTimestampUnparseable)
 	}
 
 	if timestamp.Add(-TimestampTolerance).After(s.timeNow()) {
-		return nil, NewServerError(http.StatusBadRequest, ErrTimestampInFuture.Error())
+		return nil, NewServerError(http.StatusBadRequest, ErrMessageTimestampInFuture)
 	}
 
 	if timestamp.Add(TimestampTolerance).Before(s.timeNow().Add(-MaxContentAge)) {
-		return nil, NewServerError(http.StatusBadRequest, ErrTimestampTooOld.Error())
+		return nil, NewServerError(http.StatusBadRequest, ErrMessageTimestampTooOld)
 	}
 
 	// If we have a board with a timestamp newer than the given one, we're meant
@@ -246,7 +273,7 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 	board, err := s.boardStore.Get(ctx, key)
 	if err == nil {
 		if board.Timestamp.After(timestamp) {
-			return nil, NewServerError(http.StatusConflict, ErrTimestampOlderThanCurrent.Error())
+			return nil, NewServerError(http.StatusConflict, ErrMessageTimestampOlderThanCurrent)
 		}
 	}
 
@@ -301,7 +328,7 @@ func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*Ser
 			}
 
 			w.WriteHeader(http.StatusInternalServerError)
-			_, _ = w.Write([]byte(ErrInternalError.Error()))
+			_, _ = w.Write([]byte(ErrMessageInternalError))
 			return
 		}
 
@@ -338,7 +365,7 @@ func generateContent() string {
 	return "this is some test content and it should probably be expanded upon"
 }
 
-// From spec: <time datetime="YYYY-MM-DDTHH:MM:SSZ">
+// From spec: <time datetime="YYYY-MM-DDTHH:MM:SSZ">.
 const timestampFormat = "2006-01-02T15:04:05Z"
 
 // The specification strictly states that parsing is allowed to be very strict,
@@ -352,18 +379,4 @@ func isTimestampOnly(content string) bool {
 	}
 
 	return strings.TrimSpace(strings.Replace(content, match[0], "", 1)) == ""
-}
-
-func parseTimestamp(content string) (time.Time, error) {
-	match := timestampRE.FindStringSubmatch(content)
-	if match == nil {
-		return time.Time{}, ErrTimestampMissing
-	}
-
-	timestamp, err := time.Parse(timestampFormat, match[1])
-	if err != nil {
-		return time.Time{}, ErrTimestampUnparseable
-	}
-
-	return timestamp, nil
 }

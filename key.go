@@ -15,9 +15,9 @@ const (
 )
 
 var (
-	ErrKeyExpired     = xerrors.New("The given key is expired. The last four digits `MMYY` represent a month and year number which is now allowed to exceed the current month and year.")
-	ErrKeyInvalid     = xerrors.New("The given key is invalid. It should be exactly 64 characters in length and be suffixed with `83eMMYY` where `MM` is a valid month number and `YY` are the last two digits of a year.")
-	ErrKeyNotYetValid = xerrors.New("The given key is not yet valid. The last four digits `MMYY` represent a month and year number which must be within two years of the current month and year.")
+	ErrKeyExpired     = xerrors.New("key is expired")
+	ErrKeyInvalid     = xerrors.New("key is invalid")
+	ErrKeyNotYetValid = xerrors.New("key is not yet valid")
 )
 
 type KeyPair struct {
@@ -129,15 +129,14 @@ func relativeMonth(t time.Time, relativeMonths int) time.Time {
 	// returns Oct 1st instead of Nov 30th (because Nov 31st doesn't exist).
 	// That's basically the whole reason this function exists.
 	targetYear, targetMonth := year, month+time.Month(relativeMonths)
-	switch targetMonth {
+	switch targetMonth { //nolint:exhaustive
 	case 0:
-		targetYear -= 1
+		targetYear--
 		targetMonth = 12
 	case 13:
-		targetYear += 1
+		targetYear++
 		targetMonth = 1
-	default:
 	}
 
-	return time.Date(targetYear, time.Month(targetMonth), 1, 0, 0, 0, 0, time.UTC)
+	return time.Date(targetYear, targetMonth, 1, 0, 0, 0, 0, time.UTC)
 }

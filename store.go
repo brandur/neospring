@@ -7,13 +7,11 @@ import (
 )
 
 const (
-	// Spring '83 dictates a max content age of 22 days, after which content expires
+	// Spring '83 dictates a max content age of 22 days, after which content expires.
 	MaxContentAge = 22 * 24 * time.Hour
 )
 
-var (
-	ErrKeyNotFound = errors.New("Requested key not found.")
-)
+var ErrKeyNotFound = errors.New("key not found")
 
 type BoardStore interface {
 	Get(ctx context.Context, key string) (*MemoryBoard, error)
@@ -34,7 +32,7 @@ type MemoryBoardStore struct {
 func NewMemoryBoardStore() *MemoryBoardStore {
 	return &MemoryBoardStore{
 		boards:  make(map[string]*MemoryBoard),
-		timeNow: func() time.Time { return time.Now() },
+		timeNow: time.Now,
 	}
 }
 

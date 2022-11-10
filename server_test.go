@@ -84,22 +84,22 @@ func TestServerHandleGetKey(t *testing.T) {
 
 	t.Run("KeyInvalid", setup(func(t *testing.T) {
 		_, err := server.handleGetKey(ctx, requestForKey(TestPrivateKey))
-		requireServerError(t, NewServerError(http.StatusForbidden, ErrKeyInvalid.Error()), err)
+		requireServerError(t, NewServerError(http.StatusForbidden, ErrMessageKeyInvalid), err)
 	}))
 
 	t.Run("KeyExpired", setup(func(t *testing.T) {
 		_, err := server.handleGetKey(ctx, requestForKey("ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0519"))
-		requireServerError(t, NewServerError(http.StatusForbidden, ErrKeyExpired.Error()), err)
+		requireServerError(t, NewServerError(http.StatusForbidden, ErrMessageKeyExpired), err)
 	}))
 
 	t.Run("KeyNotYetValid", setup(func(t *testing.T) {
 		_, err := server.handleGetKey(ctx, requestForKey("ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0525"))
-		requireServerError(t, NewServerError(http.StatusForbidden, ErrKeyNotYetValid.Error()), err)
+		requireServerError(t, NewServerError(http.StatusForbidden, ErrMessageKeyNotYetValid), err)
 	}))
 
 	t.Run("DenyList", setup(func(t *testing.T) {
 		_, err := server.handleGetKey(ctx, requestForKey(InfernalPublicKey))
-		requireServerError(t, NewServerError(http.StatusForbidden, ErrDeniedKey.Error()), err)
+		requireServerError(t, NewServerError(http.StatusForbidden, ErrMessageDeniedKey), err)
 	}))
 
 	t.Run("KeyNotFound", setup(func(t *testing.T) {
@@ -151,7 +151,7 @@ func TestServerHandlePutKey(t *testing.T) {
 	}
 
 	signedRequestForKey := func(keyPair *KeyPair, content string) *http.Request {
-		r := mustNewRequest(ctx, http.MethodPut, "/"+keyPair.PublicKey, map[string]string{"key": keyPair.PublicKey}, bytes.NewReader([]byte(content)))
+		r := mustNewRequest(ctx, http.MethodPut, "/"+keyPair.PublicKey, map[string]string{"key": keyPair.PublicKey}, bytes.NewReader([]byte(content))) //nolint:lll
 		r.Header.Set("Spring-Signature", hex.EncodeToString(keyPair.Sign([]byte(content))))
 		return r
 	}
@@ -196,27 +196,27 @@ func TestServerHandlePutKey(t *testing.T) {
 		keyPair := MustParseKeyPair(TestPrivateKey, TestPublicKey)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime)+" some other content"))
-		requireServerError(t, NewServerError(http.StatusUnauthorized, ErrTestKey.Error()), err)
+		requireServerError(t, NewServerError(http.StatusUnauthorized, ErrMessageTestKey), err)
 	}))
 
 	t.Run("KeyInvalid", setup(func(t *testing.T) {
 		_, err := server.handlePutKey(ctx, requestForKey(TestPrivateKey, timestampTag(stableTime)+" some other content"))
-		requireServerError(t, NewServerError(http.StatusForbidden, ErrKeyInvalid.Error()), err)
+		requireServerError(t, NewServerError(http.StatusForbidden, ErrMessageKeyInvalid), err)
 	}))
 
 	t.Run("KeyExpired", setup(func(t *testing.T) {
-		_, err := server.handlePutKey(ctx, requestForKey("ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0519", timestampTag(stableTime)+" some other content"))
-		requireServerError(t, NewServerError(http.StatusForbidden, ErrKeyExpired.Error()), err)
+		_, err := server.handlePutKey(ctx, requestForKey("ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0519", timestampTag(stableTime)+" some other content")) //nolint:lll
+		requireServerError(t, NewServerError(http.StatusForbidden, ErrMessageKeyExpired), err)
 	}))
 
 	t.Run("KeyNotYetValid", setup(func(t *testing.T) {
-		_, err := server.handlePutKey(ctx, requestForKey("ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0525", timestampTag(stableTime)+" some other content"))
-		requireServerError(t, NewServerError(http.StatusForbidden, ErrKeyNotYetValid.Error()), err)
+		_, err := server.handlePutKey(ctx, requestForKey("ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0525", timestampTag(stableTime)+" some other content")) //nolint:lll
+		requireServerError(t, NewServerError(http.StatusForbidden, ErrMessageKeyNotYetValid), err)
 	}))
 
 	t.Run("DenyList", setup(func(t *testing.T) {
 		_, err := server.handlePutKey(ctx, requestForKey(InfernalPublicKey, timestampTag(stableTime)+" some other content"))
-		requireServerError(t, NewServerError(http.StatusForbidden, ErrDeniedKey.Error()), err)
+		requireServerError(t, NewServerError(http.StatusForbidden, ErrMessageDeniedKey), err)
 	}))
 
 	t.Run("ContentTooLarge", setup(func(t *testing.T) {
@@ -232,7 +232,7 @@ func TestServerHandlePutKey(t *testing.T) {
 		}
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime)+sb.String()))
-		requireServerError(t, NewServerError(http.StatusRequestEntityTooLarge, ErrContentTooLarge.Error()), err)
+		requireServerError(t, NewServerError(http.StatusRequestEntityTooLarge, ErrMessageContentTooLarge), err)
 	}))
 
 	t.Run("SignatureMissing", setup(func(t *testing.T) {
@@ -240,7 +240,7 @@ func TestServerHandlePutKey(t *testing.T) {
 		r.Header.Set("Spring-Signature", "")
 
 		_, err := server.handlePutKey(ctx, r)
-		requireServerError(t, NewServerError(http.StatusBadRequest, ErrSignatureMissing.Error()), err)
+		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageSignatureMissing), err)
 	}))
 
 	t.Run("SignatureUnparseable", setup(func(t *testing.T) {
@@ -248,7 +248,7 @@ func TestServerHandlePutKey(t *testing.T) {
 		r.Header.Set("Spring-Signature", "zxt")
 
 		_, err := server.handlePutKey(ctx, r)
-		requireServerError(t, NewServerError(http.StatusBadRequest, ErrSignatureUnparseable.Error()), err)
+		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageSignatureUnparseable), err)
 	}))
 
 	t.Run("SignatureBadLength", setup(func(t *testing.T) {
@@ -256,7 +256,7 @@ func TestServerHandlePutKey(t *testing.T) {
 		r.Header.Set("Spring-Signature", "abcd")
 
 		_, err := server.handlePutKey(ctx, r)
-		requireServerError(t, NewServerError(http.StatusBadRequest, ErrSignatureBadLength.Error()), err)
+		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageSignatureBadLength), err)
 	}))
 
 	t.Run("SignatureInvalid", setup(func(t *testing.T) {
@@ -266,43 +266,43 @@ func TestServerHandlePutKey(t *testing.T) {
 		r.Header.Set("Spring-Signature", hex.EncodeToString(keyPair.Sign([]byte("other content"))))
 
 		_, err := server.handlePutKey(ctx, r)
-		requireServerError(t, NewServerError(http.StatusUnauthorized, ErrSignatureInvalid.Error()), err)
+		requireServerError(t, NewServerError(http.StatusUnauthorized, ErrMessageSignatureInvalid), err)
 	}))
 
 	t.Run("TimestampMissing", setup(func(t *testing.T) {
 		keyPair := MustParseKeyPair(samplePrivateKey, samplePublicKey)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, "some content without timestamp"))
-		requireServerError(t, NewServerError(http.StatusBadRequest, ErrTimestampMissing.Error()), err)
+		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampMissing), err)
 	}))
 
 	t.Run("TimestampMissing", setup(func(t *testing.T) {
 		keyPair := MustParseKeyPair(samplePrivateKey, samplePublicKey)
 
-		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, `<time datetime="2022-11-09T10:11:79Z"> some other content`))
-		requireServerError(t, NewServerError(http.StatusBadRequest, ErrTimestampUnparseable.Error()), err)
+		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, `<time datetime="2022-11-09T10:11:79Z"> some other content`)) //nolint:lll
+		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampUnparseable), err)
 	}))
 
 	t.Run("TimestampInFuture", setup(func(t *testing.T) {
 		keyPair := MustParseKeyPair(samplePrivateKey, samplePublicKey)
 
-		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(3*time.Hour))+" some other content"))
-		requireServerError(t, NewServerError(http.StatusBadRequest, ErrTimestampInFuture.Error()), err)
+		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(3*time.Hour))+" some other content")) //nolint:lll
+		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampInFuture), err)
 	}))
 
 	t.Run("TimestampTooOld", setup(func(t *testing.T) {
 		keyPair := MustParseKeyPair(samplePrivateKey, samplePublicKey)
 
-		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(-MaxContentAge).Add(-3*time.Hour))+" some other content"))
-		requireServerError(t, NewServerError(http.StatusBadRequest, ErrTimestampTooOld.Error()), err)
+		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(-MaxContentAge).Add(-3*time.Hour))+" some other content")) //nolint:lll
+		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampTooOld), err)
 	}))
 
 	t.Run("TimestampOlderThanCurrent", setup(func(t *testing.T) {
 		keyPair := MustParseKeyPair(samplePrivateKey, samplePublicKey)
 		_ = storeKeyContent(keyPair, stableTime)
 
-		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(-5*time.Minute))+" some other content"))
-		requireServerError(t, NewServerError(http.StatusConflict, ErrTimestampOlderThanCurrent.Error()), err)
+		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(-5*time.Minute))+" some other content")) //nolint:lll
+		requireServerError(t, NewServerError(http.StatusConflict, ErrMessageTimestampOlderThanCurrent), err)
 	}))
 }
 
@@ -358,7 +358,7 @@ func TestServerWrapEndpoint(t *testing.T) {
 		handler.ServeHTTP(recorder, mustNewRequest(ctx, http.MethodGet, "/", nil, nil))
 
 		require.Equal(t, http.StatusInternalServerError, recorder.Code)
-		require.Equal(t, ErrInternalError.Error(), recorder.Body.String())
+		require.Equal(t, ErrMessageInternalError, recorder.Body.String())
 		require.Equal(t, "text/plain", recorder.Header().Get("Content-Type"))
 	}))
 }
@@ -373,7 +373,7 @@ func TestIsTimestampOnly(t *testing.T) {
 
 func mustNewRequest(ctx context.Context, method, path string, muxVars map[string]string, body io.Reader) *http.Request {
 	r, _ := http.NewRequestWithContext(ctx, method, "http://spring83.example.com"+path, body)
-	r = mux.SetURLVars(r, muxVars)
+	r = mux.SetURLVars(r, muxVars) //nolint:contextcheck
 	return r
 }
 
