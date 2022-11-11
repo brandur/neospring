@@ -22,6 +22,39 @@ jobs:
       - name: Build Docker image
         run: docker build .
 
+  deploy_google_cloud_run:
+    # if: github.ref == 'refs/heads/master'
+    needs:
+      - build_docker_image
+      - golangci-lint
+      - program_starts
+      - tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@v3
+
+      - name: "GCP: Auth"
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: '${{ secrets.GCP_CREDENTIALS_JSON }}'
+
+      - name: "GCP: setup-gcloud"
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: neospring
+
+      - name: "GCP: gcloud info"
+        run: gcloud info
+
+      - name: "GCP: Publish image"
+        run: gcloud builds submit --tag gcr.io/neospring/neospring
+
+      - name: "GCP: Deploy neospring"
+        run: gcloud run deploy --image gcr.io/neospring/neospring --platform managed --region us-central1 neospring
+
   golangci-lint:
     runs-on: ubuntu-latest
     timeout-minutes: 3
