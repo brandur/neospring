@@ -12,30 +12,21 @@ import (
 
 	"golang.org/x/sync/errgroup"
 	"golang.org/x/xerrors"
+
+	"github.com/brandur/neospring/internal/nskey"
 )
 
 const (
 	// Month/year digits encoded into the end of a Spring '83 public key.
 	expiryDigitsTimeFormat = "0106"
-
-	// Spring '83 keys have a maximum expiry age of two years.
-	validKeyAge = 2 * 365 * 24 * time.Hour
 )
-
-type ed25519KeyPair struct {
-	PrivateKey ed25519.PrivateKey
-	PublicKey  ed25519.PublicKey
-}
-
-func (p *ed25519KeyPair) PrivateKeyHex() string { return hex.EncodeToString(p.PrivateKey.Seed()) }
-func (p *ed25519KeyPair) PublicKeyHex() string  { return hex.EncodeToString(p.PublicKey) }
 
 // GenerateConformingKey runs a parallel search for an Ed25519 key that expires
 // in the same month as `expiryMonth`. Generally speaking, `expiryMonth` should
 // target two years from the current month, which is the maximum validity period
 // of a Spring '83 key.
 // portion has the given target suffix.
-func GenerateConformingKey(ctx context.Context, expiryMonth time.Time) (*ed25519KeyPair, int, error) {
+func GenerateConformingKey(ctx context.Context, expiryMonth time.Time) (*nskey.KeyPair, int, error) {
 	return generateConformingKeyWithSuffix(ctx, keySuffixWithExpiry(expiryMonth))
 }
 
@@ -43,9 +34,9 @@ func GenerateConformingKey(ctx context.Context, expiryMonth time.Time) (*ed25519
 // function is broken out separately to make the function easily runnable in
 // tests without having to spend the time and resources to generate a real
 // Spring '83 key.
-func generateConformingKeyWithSuffix(ctx context.Context, targetSuffix string) (*ed25519KeyPair, int, error) {
+func generateConformingKeyWithSuffix(ctx context.Context, targetSuffix string) (*nskey.KeyPair, int, error) {
 	var (
-		conformingKeyChan = make(chan *ed25519KeyPair, runtime.NumCPU())
+		conformingKeyChan = make(chan *nskey.KeyPair, runtime.NumCPU())
 		done              atomic.Bool
 		totalIterations   int64
 	)
@@ -63,7 +54,7 @@ func generateConformingKeyWithSuffix(ctx context.Context, targetSuffix string) (
 						return nil
 					}
 
-					publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+					_, privateKey, err := ed25519.GenerateKey(rand.Reader)
 					if err != nil {
 						return xerrors.Errorf("error generating key: %w", err)
 					}
@@ -72,7 +63,7 @@ func generateConformingKeyWithSuffix(ctx context.Context, targetSuffix string) (
 						continue
 					}
 
-					conformingKeyChan <- &ed25519KeyPair{privateKey, publicKey}
+					conformingKeyChan <- nskey.KeyPairFromRaw(privateKey)
 
 					done.Store(true)
 				}
@@ -129,5 +120,5 @@ func suffixBytesEqual(b, suffix []byte, oddChars bool) bool {
 }
 
 func keySuffixWithExpiry(t time.Time) string {
-	return "83e" + t.Add(validKeyAge).Format(expiryDigitsTimeFormat)
+	return "83e" + t.Add(nskey.MaxLifetime).Format(expiryDigitsTimeFormat)
 }

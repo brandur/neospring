@@ -6,11 +6,13 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/brandur/neospring/internal/nskey"
 )
 
 func TestMemoryBoardStore(t *testing.T) {
 	ctx := context.Background()
-	keyPair := MustParseKeyPair(samplePrivateKey, samplePublicKey)
+	keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
 	store := NewMemoryBoardStore()
 
 	_, err := store.Get(ctx, keyPair.PublicKey)

@@ -1,6 +1,8 @@
-package main
+package nskey
 
 import (
+	"crypto/ed25519"
+	"crypto/rand"
 	"encoding/hex"
 	"testing"
 	"time"
@@ -27,6 +29,16 @@ func TestParseKeyPair(t *testing.T) {
 		require.Equal(t, TestPrivateKey, keyPair.PrivateKey)
 		require.Equal(t, TestPublicKey, keyPair.PublicKey)
 	})
+}
+
+func TestKeyPairRoundTripFromRaw(t *testing.T) {
+	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	keyPair := KeyPairFromRaw(privateKey)
+	require.Equal(t, hex.EncodeToString(publicKey), keyPair.PublicKey)
+	require.Equal(t, publicKey, keyPair.publicKeyBytes)
+	require.Equal(t, hex.EncodeToString(privateKey), keyPair.PrivateKey)
+	require.Equal(t, privateKey, keyPair.privateKeyBytes)
 }
 
 func TestKeyPairRoundTrip(t *testing.T) {
@@ -57,38 +69,39 @@ func TestParseKey(t *testing.T) {
 	}
 
 	t.Run("Okay", func(t *testing.T) {
-		keyBytes, err := parseKey(key, yearMonthDate(2022, 11))
+		keyObj, err := ParseKey(key, yearMonthDate(2022, 11))
 		require.NoError(t, err)
-		require.Equal(t, key, hex.EncodeToString(keyBytes))
+		require.Equal(t, key, keyObj.PublicKey)
+		require.Equal(t, key, hex.EncodeToString(keyObj.publicKeyBytes))
 	})
 
 	t.Run("BadFormat", func(t *testing.T) {
 		// Too short
 		{
-			_, err := parseKey("194c1fed2728d1fdb6de7df362497d877b8c0b8f0883e1124", yearMonthDate(2022, 11))
+			_, err := ParseKey("194c1fed2728d1fdb6de7df362497d877b8c0b8f0883e1124", yearMonthDate(2022, 11))
 			require.ErrorIs(t, err, ErrKeyInvalid)
 		}
 
 		// Missing magic `83e` near end
 		{
-			_, err := parseKey("e90e9091b13a6e5194c1fed2728d1fdb6de7df362497d877b8c0b8f0883f1124", yearMonthDate(2022, 11))
+			_, err := ParseKey("e90e9091b13a6e5194c1fed2728d1fdb6de7df362497d877b8c0b8f0883f1124", yearMonthDate(2022, 11))
 			require.ErrorIs(t, err, ErrKeyInvalid)
 		}
 
 		// Invalid month 13
 		{
-			_, err := parseKey("e90e9091b13a6e5194c1fed2728d1fdb6de7df362497d877b8c0b8f0883e1324", yearMonthDate(2022, 11))
+			_, err := ParseKey("e90e9091b13a6e5194c1fed2728d1fdb6de7df362497d877b8c0b8f0883e1324", yearMonthDate(2022, 11))
 			require.ErrorIs(t, err, ErrKeyInvalid)
 		}
 	})
 
 	t.Run("Expired", func(t *testing.T) {
-		_, err := parseKey(key, yearMonthDate(2024, 12))
+		_, err := ParseKey(key, yearMonthDate(2024, 12))
 		require.ErrorIs(t, err, ErrKeyExpired)
 	})
 
 	t.Run("NotYetValid", func(t *testing.T) {
-		_, err := parseKey(key, yearMonthDate(2022, 10))
+		_, err := ParseKey(key, yearMonthDate(2022, 10))
 		require.ErrorIs(t, err, ErrKeyNotYetValid)
 	})
 }

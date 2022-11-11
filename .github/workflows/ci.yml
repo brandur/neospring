@@ -27,7 +27,7 @@ jobs:
         run: go mod download
 
       - name: "Go: Test"
-        run: go test . -race
+        run: go test ./... -race
 
   golangci-lint:
     runs-on: ubuntu-latest

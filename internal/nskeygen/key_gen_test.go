@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 	"go.uber.org/goleak"
+
+	"github.com/brandur/neospring/internal/nskey"
 )
 
 func TestExpiryDigitsTimeFormat(t *testing.T) {
@@ -21,10 +23,10 @@ func TestGenerateConformingKeyWithSuffix(t *testing.T) {
 	ctx := context.Background()
 	defer goleak.VerifyNone(t)
 
-	showKeys := func(key *ed25519KeyPair, start time.Time, totalIterations int) {
+	showKeys := func(key *nskey.KeyPair, start time.Time, totalIterations int) {
 		fmt.Printf("took %v with %d iterations\n", time.Since(start), totalIterations)
-		fmt.Printf("private key (hex): %s\n", key.PrivateKeyHex())
-		fmt.Printf("public key (hex):  %s\n", key.PublicKeyHex())
+		fmt.Printf("private key (hex): %s\n", key.PrivateKey)
+		fmt.Printf("public key (hex):  %s\n", key.PublicKey)
 	}
 
 	// Ultra simplistic example with no suffix, meaning the first key generated
@@ -41,7 +43,7 @@ func TestGenerateConformingKeyWithSuffix(t *testing.T) {
 		start := time.Now()
 		key, totalIterations, err := generateConformingKeyWithSuffix(ctx, "aa")
 		require.NoError(t, err)
-		require.True(t, strings.HasSuffix(key.PublicKeyHex(), "aa"))
+		require.True(t, strings.HasSuffix(key.PublicKey, "aa"))
 		showKeys(key, start, totalIterations)
 	})
 
@@ -49,7 +51,7 @@ func TestGenerateConformingKeyWithSuffix(t *testing.T) {
 		start := time.Now()
 		key, totalIterations, err := generateConformingKeyWithSuffix(ctx, "aaa")
 		require.NoError(t, err)
-		require.True(t, strings.HasSuffix(key.PublicKeyHex(), "aaa"))
+		require.True(t, strings.HasSuffix(key.PublicKey, "aaa"))
 		showKeys(key, start, totalIterations)
 	})
 }

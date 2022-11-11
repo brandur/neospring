@@ -15,6 +15,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/xerrors"
+
+	"github.com/brandur/neospring/internal/nskey"
 )
 
 const (
@@ -56,14 +58,6 @@ const (
 	MessageKeyUpdated = "Content for the given key has been updated successfully."
 )
 
-// Test private/public keypair defined by the Spring '83 specification. Attempts
-// to post content for it are always rejected, and requests for it always return
-// some randomized test content to help write client integrations.
-const (
-	TestPrivateKey = "3371f8b011f51632fea33ed0a3688c26a45498205c6097c352bd4d079d224419"
-	TestPublicKey  = "ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0583"
-)
-
 type BoardNotFoundError struct {
 	key string
 }
@@ -84,7 +78,7 @@ type Server struct {
 	httpServer  *http.Server
 	logger      *logrus.Logger
 	router      *mux.Router
-	testKeyPair *KeyPair
+	testKeyPair *nskey.KeyPair
 	timeNow     func() time.Time
 }
 
@@ -93,7 +87,7 @@ func NewServer(boardStore BoardStore, denyList DenyList, port int) *Server {
 		boardStore:  boardStore,
 		denyList:    denyList,
 		logger:      logrus.New(),
-		testKeyPair: MustParseKeyPair(TestPrivateKey, TestPublicKey),
+		testKeyPair: nskey.MustParseKeyPair(nskey.TestPrivateKey, nskey.TestPublicKey),
 		timeNow:     time.Now,
 	}
 
@@ -157,14 +151,14 @@ func (s *Server) handleGetKey(ctx context.Context, r *http.Request) (*ServerResp
 		goto respond
 	}
 
-	_, err = parseKey(key, s.timeNow())
+	_, err = nskey.ParseKey(key, s.timeNow())
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrKeyExpired):
+		case errors.Is(err, nskey.ErrKeyExpired):
 			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyExpired)
-		case errors.Is(err, ErrKeyInvalid):
+		case errors.Is(err, nskey.ErrKeyInvalid):
 			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyInvalid)
-		case errors.Is(err, ErrKeyNotYetValid):
+		case errors.Is(err, nskey.ErrKeyNotYetValid):
 			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyNotYetValid)
 		}
 
@@ -218,14 +212,14 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 		return nil, NewServerError(http.StatusUnauthorized, ErrMessageTestKey)
 	}
 
-	keyBytes, err := parseKey(key, s.timeNow())
+	keyObj, err := nskey.ParseKey(key, s.timeNow())
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrKeyExpired):
+		case errors.Is(err, nskey.ErrKeyExpired):
 			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyExpired)
-		case errors.Is(err, ErrKeyInvalid):
+		case errors.Is(err, nskey.ErrKeyInvalid):
 			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyInvalid)
-		case errors.Is(err, ErrKeyNotYetValid):
+		case errors.Is(err, nskey.ErrKeyNotYetValid):
 			return nil, NewServerError(http.StatusForbidden, ErrMessageKeyNotYetValid)
 		}
 
@@ -246,23 +240,23 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 		return nil, NewServerError(http.StatusRequestEntityTooLarge, ErrMessageContentTooLarge)
 	}
 
-	signatureStr := r.Header.Get("Spring-Signature")
-	if signatureStr == "" {
+	sigStr := r.Header.Get("Spring-Signature")
+	if sigStr == "" {
 		return nil, NewServerError(http.StatusBadRequest, ErrMessageSignatureMissing)
 	}
 
-	signature, err := hex.DecodeString(signatureStr)
+	sig, err := hex.DecodeString(sigStr)
 	if err != nil {
 		return nil, NewServerError(http.StatusBadRequest, ErrMessageSignatureUnparseable)
 	}
 
-	if len(signature) != ed25519.SignatureSize {
+	if len(sig) != ed25519.SignatureSize {
 		return nil, NewServerError(http.StatusBadRequest, ErrMessageSignatureBadLength)
 	}
 
 	// Verify the signature early because it might prevent against other types
 	// of bad requests that might be more expensive to check.
-	if !ed25519.Verify(keyBytes, content, signature) {
+	if !keyObj.Verify(content, sig) {
 		return nil, NewServerError(http.StatusUnauthorized, ErrMessageSignatureInvalid)
 	}
 

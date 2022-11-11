@@ -7,9 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brandur/neospring/internal/nskeygen"
 	"github.com/caarlos0/env/v6"
 	"github.com/spf13/cobra"
+	"golang.org/x/xerrors"
+
+	"github.com/brandur/neospring/internal/nskeygen"
 )
 
 const defaultPort = 3489
@@ -17,7 +19,7 @@ const defaultPort = 3489
 func main() {
 	time.Local = time.UTC
 
-	var rootCmd = &cobra.Command{
+	rootCmd := &cobra.Command{
 		Use:   "neospring",
 		Short: "Spring '83 server and tools",
 		Long: strings.TrimSpace(`
@@ -101,12 +103,12 @@ func runKeygen() error {
 
 	key, totalIterations, err := nskeygen.GenerateConformingKey(context.Background(), t)
 	if err != nil {
-		abortErr(err)
+		return err
 	}
 
 	fmt.Printf("Succeeded in %v with %d iterations\n", time.Since(t), totalIterations)
-	fmt.Printf("Private key: %s\n", key.PrivateKeyHex())
-	fmt.Printf("Public  key: %s\n", key.PublicKeyHex())
+	fmt.Printf("Private key: %s\n", key.PrivateKey)
+	fmt.Printf("Public  key: %s\n", key.PublicKey)
 
 	return nil
 }
@@ -118,7 +120,7 @@ func runServe() error {
 
 	config := Config{}
 	if err := env.Parse(&config); err != nil {
-		return err
+		return xerrors.Errorf("error parsing env config: %w", err)
 	}
 
 	denyList := NewMemoryDenyList()
