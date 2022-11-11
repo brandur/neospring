@@ -333,9 +333,10 @@ func TestServerHandlePutKey(t *testing.T) {
 
 func TestServerWrapEndpoint(t *testing.T) {
 	var (
-		ctx      context.Context
-		recorder *httptest.ResponseRecorder
-		server   *Server
+		ctx          context.Context
+		ctxContainer *ContextContainer
+		recorder     *httptest.ResponseRecorder
+		server       *Server
 	)
 
 	setup := func(test func(*testing.T)) func(*testing.T) {
@@ -343,6 +344,8 @@ func TestServerWrapEndpoint(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
+			ctxContainer = &ContextContainer{}
+			ctx = context.WithValue(ctx, contextContainerContextKey{}, ctxContainer)
 			recorder = httptest.NewRecorder()
 			server = NewServer(nil, nil, defaultPort)
 
@@ -361,6 +364,8 @@ func TestServerWrapEndpoint(t *testing.T) {
 		require.Equal(t, "a body", recorder.Body.String())
 		require.Equal(t, "text/html;charset=utf-8", recorder.Header().Get("Content-Type"))
 		require.Equal(t, "83", recorder.Header().Get("Spring-Version"))
+
+		require.Equal(t, http.StatusCreated, ctxContainer.StatusCode)
 	}))
 
 	t.Run("ServerError", setup(func(t *testing.T) {
@@ -373,6 +378,8 @@ func TestServerWrapEndpoint(t *testing.T) {
 		require.Equal(t, http.StatusBadRequest, recorder.Code)
 		require.Equal(t, "an error", recorder.Body.String())
 		require.Equal(t, "text/html;charset=utf-8", recorder.Header().Get("Content-Type"))
+
+		require.Equal(t, http.StatusBadRequest, ctxContainer.StatusCode)
 	}))
 
 	t.Run("InternalError", setup(func(t *testing.T) {
@@ -385,6 +392,8 @@ func TestServerWrapEndpoint(t *testing.T) {
 		require.Equal(t, http.StatusInternalServerError, recorder.Code)
 		require.Equal(t, ErrMessageInternalError, recorder.Body.String())
 		require.Equal(t, "text/html;charset=utf-8", recorder.Header().Get("Content-Type"))
+
+		require.Equal(t, http.StatusInternalServerError, ctxContainer.StatusCode)
 	}))
 }
 

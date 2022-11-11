@@ -92,7 +92,11 @@ func NewServer(boardStore BoardStore, denyList DenyList, port int) *Server {
 	}
 
 	router := mux.NewRouter()
+
+	router.Use((&ContextContainerMiddleware{}).Wrapper)
+	router.Use((&CanonicalLogLineMiddleware{logger: server.logger}).Wrapper)
 	router.Use((&CORSMiddleware{}).Wrapper)
+
 	router.Handle("/", server.wrapEndpoint(server.handleIndex)).Methods(http.MethodGet)
 	router.Handle("/{key}", server.wrapEndpoint(server.handleGetKey)).Methods(http.MethodGet)
 	router.Handle("/{key}", server.wrapEndpoint(server.handlePutKey)).Methods(http.MethodPut)
@@ -320,6 +324,13 @@ func (s *Server) randomizeTestKeyBoard(ctx context.Context) (*MemoryBoard, error
 // error is encountered.
 func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*ServerResponse, error)) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		ctxContainer := ContextContainerFrom(r.Context())
+
+		writeStatus := func(statusCode int) {
+			ctxContainer.StatusCode = statusCode
+			w.WriteHeader(statusCode)
+		}
+
 		w.Header().Set("Content-Type", "text/html;charset=utf-8")
 
 		resp, err := h(r.Context(), r)
@@ -327,13 +338,13 @@ func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*Ser
 			var serverErr *ServerError
 			if errors.As(err, &serverErr) {
 				s.logger.Infof("User error [status %d]: %v", serverErr.StatusCode, serverErr)
-				w.WriteHeader(serverErr.StatusCode)
+				writeStatus(serverErr.StatusCode)
 				_, _ = w.Write([]byte(serverErr.Error()))
 				return
 			}
 
 			s.logger.Errorf("Internal server error: %v", err)
-			w.WriteHeader(http.StatusInternalServerError)
+			writeStatus(http.StatusInternalServerError)
 			_, _ = w.Write([]byte(ErrMessageInternalError))
 			return
 		}
@@ -347,7 +358,7 @@ func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*Ser
 		}
 
 		if resp.StatusCode != 0 {
-			w.WriteHeader(resp.StatusCode)
+			writeStatus(resp.StatusCode)
 		}
 
 		_, _ = w.Write(resp.Body)
