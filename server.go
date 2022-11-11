@@ -326,9 +326,9 @@ func (s *Server) wrapEndpoint(h func(ctx context.Context, r *http.Request) (*Ser
 		if err != nil {
 			var serverErr *ServerError
 			if errors.As(err, &serverErr) {
-				s.logger.Infof("User error: %v", err)
+				s.logger.Infof("User error [status %d]: %v", serverErr.StatusCode, serverErr)
 				w.WriteHeader(serverErr.StatusCode)
-				_, _ = w.Write([]byte(err.Error()))
+				_, _ = w.Write([]byte(serverErr.Error()))
 				return
 			}
 
