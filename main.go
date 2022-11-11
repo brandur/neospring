@@ -14,7 +14,7 @@ import (
 	"github.com/brandur/neospring/internal/nskeygen"
 )
 
-const defaultPort = 3489
+const defaultPort = 4434 // 2217 * 2
 
 func main() {
 	time.Local = time.UTC
@@ -115,7 +115,7 @@ func runKeygen() error {
 
 func runServe() error {
 	type Config struct {
-		Port int `env:"PORT" envDefault:"3489"`
+		Port int `env:"PORT" envDefault:"4434"`
 	}
 
 	config := Config{}

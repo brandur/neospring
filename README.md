@@ -10,7 +10,7 @@ I know there's other Go-based implementations, but this is a personal one just w
 
     $ go build . && ./neospring
 
-    $ curl http://localhost:3489/ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0583
+    $ curl http://localhost:4434/ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0583
     this is some test content and it should probably be expanded upon
 
 Generate a new key:
