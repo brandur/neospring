@@ -8,8 +8,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
+	"os/signal"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -116,12 +119,35 @@ func NewServer(boardStore BoardStore, denyList DenyList, port int) *Server {
 	return server
 }
 
-func (s *Server) Start() error {
+func (s *Server) Start(ctx context.Context) error {
 	s.logger.Infof("Listening on %s\n", s.httpServer.Addr)
+
+	// On SIGTERM, try to shut the server down gracefully: stop accepting new
+	// connections, and wait for existing ones to finish.
+	//
+	// Among other things, this is useful for Heroku, which will send a SIGTERM
+	// on a deploy or periodic dyno restart to give us a chance to wind down
+	// safely before we're forced to exit.
+	idleConnsClosed := make(chan struct{})
+	go func() {
+		sigterm := make(chan os.Signal, 1)
+		signal.Notify(sigterm, syscall.SIGTERM)
+		<-sigterm
+
+		s.logger.Infof("Performing graceful shutdown")
+		if err := s.httpServer.Shutdown(ctx); err != nil {
+			// Error from closing listeners, or context timeout
+			s.logger.Errorf("Server shutdown error: %v", err)
+		}
+
+		close(idleConnsClosed)
+	}()
 
 	if err := s.httpServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		return xerrors.Errorf("error listening on %s: %w", s.httpServer.Addr, err)
 	}
+
+	<-idleConnsClosed
 
 	return nil
 }
