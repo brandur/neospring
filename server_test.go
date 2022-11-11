@@ -24,6 +24,24 @@ const (
 	samplePublicKey  = "e90e9091b13a6e5194c1fed2728d1fdb6de7df362497d877b8c0b8f0883e1124"
 )
 
+// Since the various KeyPair parsing functions only take a private key portion,
+// this test case is here to make sure that the test/sample public keys we have
+// bundled up in this package actually match up with the private keys that they
+// claim to.
+func TestBundledKeys(t *testing.T) {
+	{
+		keyPair, err := nskey.ParseKeyPairUnchecked(nskey.TestPrivateKey)
+		require.NoError(t, err)
+		require.Equal(t, nskey.TestPublicKey, keyPair.PublicKey)
+	}
+
+	{
+		keyPair, err := nskey.ParseKeyPairUnchecked(samplePrivateKey)
+		require.NoError(t, err)
+		require.Equal(t, samplePublicKey, keyPair.PublicKey)
+	}
+}
+
 func TestServerHandleGetKey(t *testing.T) {
 	var (
 		ctx      context.Context
@@ -62,7 +80,7 @@ func TestServerHandleGetKey(t *testing.T) {
 	}
 
 	t.Run("Success", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 		board := storeKeyContent(keyPair, stableTime, "some board content")
 
 		resp, err := server.handleGetKey(ctx, requestForKey(keyPair.PublicKey))
@@ -75,7 +93,7 @@ func TestServerHandleGetKey(t *testing.T) {
 	}))
 
 	t.Run("TestKey", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(nskey.TestPrivateKey, nskey.TestPublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(nskey.TestPrivateKey)
 
 		resp, err := server.handleGetKey(ctx, requestForKey(nskey.TestPublicKey))
 		require.NoError(t, err)
@@ -115,7 +133,7 @@ func TestServerHandleGetKey(t *testing.T) {
 	}))
 
 	t.Run("TimestampOnly", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 		_ = storeKeyContent(keyPair, stableTime, timestampTag(stableTime))
 
 		_, err := server.handleGetKey(ctx, requestForKey(samplePublicKey))
@@ -123,7 +141,7 @@ func TestServerHandleGetKey(t *testing.T) {
 	}))
 
 	t.Run("IfModifiedSinceParseError", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 		_ = storeKeyContent(keyPair, stableTime, "some board content")
 
 		r := requestForKey(keyPair.PublicKey)
@@ -133,7 +151,7 @@ func TestServerHandleGetKey(t *testing.T) {
 	}))
 
 	t.Run("IfModifiedSinceAfterTimestamp", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 		_ = storeKeyContent(keyPair, stableTime, "some board content")
 
 		r := requestForKey(keyPair.PublicKey)
@@ -190,7 +208,7 @@ func TestServerHandlePutKey(t *testing.T) {
 	}
 
 	t.Run("Success", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 
 		resp, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime)+" some other content"))
 		require.NoError(t, err)
@@ -200,7 +218,7 @@ func TestServerHandlePutKey(t *testing.T) {
 	}))
 
 	t.Run("TestKey", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(nskey.TestPrivateKey, nskey.TestPublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(nskey.TestPrivateKey)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime)+" some other content"))
 		requireServerError(t, NewServerError(http.StatusUnauthorized, ErrMessageTestKey), err)
@@ -227,7 +245,7 @@ func TestServerHandlePutKey(t *testing.T) {
 	}))
 
 	t.Run("ContentTooLarge", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 
 		var sb strings.Builder
 		for {
@@ -267,7 +285,7 @@ func TestServerHandlePutKey(t *testing.T) {
 	}))
 
 	t.Run("SignatureInvalid", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 
 		r := requestForKey(samplePublicKey, timestampTag(stableTime)+" some other content")
 		r.Header.Set("Spring-Signature", hex.EncodeToString(keyPair.Sign([]byte("other content"))))
@@ -277,35 +295,35 @@ func TestServerHandlePutKey(t *testing.T) {
 	}))
 
 	t.Run("TimestampMissing", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, "some content without timestamp"))
 		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampMissing), err)
 	}))
 
 	t.Run("TimestampUnparseable", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, `<time datetime="2022-11-09T10:11:79Z"> some other content`)) //nolint:lll
 		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampUnparseable), err)
 	}))
 
 	t.Run("TimestampInFuture", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(3*time.Hour))+" some other content")) //nolint:lll
 		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampInFuture), err)
 	}))
 
 	t.Run("TimestampTooOld", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(-MaxContentAge).Add(-3*time.Hour))+" some other content")) //nolint:lll
 		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampTooOld), err)
 	}))
 
 	t.Run("TimestampOlderThanCurrent", setup(func(t *testing.T) {
-		keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 		_ = storeKeyContent(keyPair, stableTime)
 
 		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(-5*time.Minute))+" some other content")) //nolint:lll

@@ -40,6 +40,15 @@ type Key struct {
 	publicKeyBytes ed25519.PublicKey
 }
 
+// KeyFromRaw produces a Key from the given raw public key. This is unchecked,
+// so no verification that it's a valid Spring '83 key is done.
+func KeyFromRaw(publicKey ed25519.PublicKey) *Key {
+	return &Key{
+		PublicKey:      hex.EncodeToString([]byte(publicKey)),
+		publicKeyBytes: publicKey,
+	}
+}
+
 // ParseKey parses a Spring '83 "key" and checks that it conforms to the various
 // requirements imposed by the spec. A key is the public portion of an Ed25519
 // keypair encoded as hex.
@@ -100,25 +109,19 @@ type KeyPair struct {
 }
 
 // KeyPairFromRaw produces a KeyPair from the given raw private key. This is
-// unchecked, so no verification that it's a valid Spring '83 is done.
+// unchecked, so no verification that it's a valid Spring '83 key is done.
 func KeyPairFromRaw(privateKey ed25519.PrivateKey) *KeyPair {
-	publicKey := privateKey.Public().(ed25519.PublicKey)
-
 	return &KeyPair{
-		Key: Key{
-			PublicKey:      hex.EncodeToString([]byte(publicKey)),
-			publicKeyBytes: publicKey,
-		},
+		Key:             *KeyFromRaw(privateKey.Public().(ed25519.PublicKey)),
 		PrivateKey:      hex.EncodeToString(privateKey),
 		privateKeyBytes: privateKey,
 	}
 }
 
-// Parses a keypair from the given private and public key.
-//
-// TODO: Rethink this interface as it may only want to take a private key since
-// the public key can easily be extracted from the private.
-func ParseKeyPair(privateKey, publicKey string) (*KeyPair, error) {
+// ParseKeyPairUnchecked parses a keypair from the given hex-encoded private
+// key. Unlike ParseKey, the key is not checked for Spring '83 validity (i.e.
+// compliant with respect to time and format).
+func ParseKeyPairUnchecked(privateKey string) (*KeyPair, error) {
 	seedBytes, err := hex.DecodeString(privateKey)
 	if err != nil {
 		return nil, xerrors.Errorf("error parsing private key: %w", err)
@@ -131,16 +134,14 @@ func ParseKeyPair(privateKey, publicKey string) (*KeyPair, error) {
 		return nil, xerrors.Errorf("private key's length is %d, but should be %d", len(seedBytes), ed25519.SeedSize)
 	}
 
-	key, err := parseKeyUnchecked(publicKey)
-	if err != nil {
-		return nil, err
-	}
+	privateKeyBytes := ed25519.NewKeyFromSeed(seedBytes)
 
-	return &KeyPair{*key, privateKey, ed25519.NewKeyFromSeed(seedBytes)}, nil
+	return &KeyPair{*KeyFromRaw(privateKeyBytes.Public().(ed25519.PublicKey)), privateKey, privateKeyBytes}, nil
 }
 
-func MustParseKeyPair(privateKey, publicKey string) *KeyPair {
-	keyPair, err := ParseKeyPair(privateKey, publicKey)
+// Same as the above, but panics in case of failure.
+func MustParseKeyPairUnchecked(privateKey string) *KeyPair {
+	keyPair, err := ParseKeyPairUnchecked(privateKey)
 	if err != nil {
 		panic(err)
 	}

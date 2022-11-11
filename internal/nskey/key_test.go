@@ -15,23 +15,49 @@ const (
 	samplePublicKey  = "e90e9091b13a6e5194c1fed2728d1fdb6de7df362497d877b8c0b8f0883e1124"
 )
 
+// Since the various KeyPair parsing functions only take a private key portion,
+// this test case is here to make sure that the test/sample public keys we have
+// bundled up in this package actually match up with the private keys that they
+// claim to.
+func TestBundledKeys(t *testing.T) {
+	{
+		keyPair, err := ParseKeyPairUnchecked(TestPrivateKey)
+		require.NoError(t, err)
+		require.Equal(t, TestPublicKey, keyPair.PublicKey)
+	}
+
+	{
+		keyPair, err := ParseKeyPairUnchecked(samplePrivateKey)
+		require.NoError(t, err)
+		require.Equal(t, samplePublicKey, keyPair.PublicKey)
+	}
+}
+
+func TestKeyFromRaw(t *testing.T) {
+	publicKey, _, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(t, err)
+	keyObj := KeyFromRaw(publicKey)
+	require.Equal(t, hex.EncodeToString(publicKey), keyObj.PublicKey)
+	require.Equal(t, publicKey, keyObj.publicKeyBytes)
+}
+
 func TestParseKeyPair(t *testing.T) {
 	t.Run("GoGenerated", func(t *testing.T) {
-		keyPair, err := ParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair, err := ParseKeyPairUnchecked(samplePrivateKey)
 		require.NoError(t, err)
 		require.Equal(t, samplePrivateKey, keyPair.PrivateKey)
 		require.Equal(t, samplePublicKey, keyPair.PublicKey)
 	})
 
 	t.Run("TestKeyPair", func(t *testing.T) {
-		keyPair, err := ParseKeyPair(TestPrivateKey, TestPublicKey)
+		keyPair, err := ParseKeyPairUnchecked(TestPrivateKey)
 		require.NoError(t, err)
 		require.Equal(t, TestPrivateKey, keyPair.PrivateKey)
 		require.Equal(t, TestPublicKey, keyPair.PublicKey)
 	})
 }
 
-func TestKeyPairRoundTripFromRaw(t *testing.T) {
+func TestKeyPairFromRaw(t *testing.T) {
 	publicKey, privateKey, err := ed25519.GenerateKey(rand.Reader)
 	require.NoError(t, err)
 	keyPair := KeyPairFromRaw(privateKey)
@@ -45,7 +71,7 @@ func TestKeyPairRoundTrip(t *testing.T) {
 	message := "this is a message that will be signed"
 
 	t.Run("GoGenerated", func(t *testing.T) {
-		keyPair, err := ParseKeyPair(samplePrivateKey, samplePublicKey)
+		keyPair, err := ParseKeyPairUnchecked(samplePrivateKey)
 		require.NoError(t, err)
 
 		sig := keyPair.Sign([]byte(message))
@@ -53,7 +79,7 @@ func TestKeyPairRoundTrip(t *testing.T) {
 	})
 
 	t.Run("TestKeyPair", func(t *testing.T) {
-		keyPair, err := ParseKeyPair(TestPrivateKey, TestPublicKey)
+		keyPair, err := ParseKeyPairUnchecked(TestPrivateKey)
 		require.NoError(t, err)
 
 		sig := keyPair.Sign([]byte(message))

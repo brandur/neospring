@@ -12,7 +12,7 @@ import (
 
 func TestMemoryBoardStore(t *testing.T) {
 	ctx := context.Background()
-	keyPair := nskey.MustParseKeyPair(samplePrivateKey, samplePublicKey)
+	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 	store := NewMemoryBoardStore()
 
 	_, err := store.Get(ctx, keyPair.PublicKey)

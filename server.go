@@ -87,7 +87,7 @@ func NewServer(boardStore BoardStore, denyList DenyList, port int) *Server {
 		boardStore:  boardStore,
 		denyList:    denyList,
 		logger:      logrus.New(),
-		testKeyPair: nskey.MustParseKeyPair(nskey.TestPrivateKey, nskey.TestPublicKey),
+		testKeyPair: nskey.MustParseKeyPairUnchecked(nskey.TestPrivateKey),
 		timeNow:     time.Now,
 	}
 
