@@ -8,10 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/brandur/neospring/internal/util/stringutil"
+	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
 
-	"github.com/gorilla/mux"
+	"github.com/brandur/neospring/internal/util/stringutil"
 )
 
 //
@@ -112,7 +112,7 @@ func (m *CanonicalLogLineMiddleware) getIP(r *http.Request) net.IP {
 // normal seconds fraction like "0.000042" instead.
 type PrettyDuration time.Duration
 
-func (d PrettyDuration) MarshalJSON() ([]byte, error) {
+func (d PrettyDuration) MarshalJSON() ([]byte, error) { //nolint:unparam
 	return []byte(`"` + d.String() + `"`), nil
 }
 
