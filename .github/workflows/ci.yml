@@ -71,4 +71,4 @@ jobs:
         # thus producing an exit code of 0 when things are working.
         run: |
           ( sleep 5 && killall -SIGTERM neospring ) &
-          neospring
+          ./neospring
