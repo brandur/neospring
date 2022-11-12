@@ -23,7 +23,7 @@ jobs:
         run: docker build .
 
   deploy_google_cloud_run:
-    # if: github.ref == 'refs/heads/master'
+    if: github.ref == 'refs/heads/master'
     needs:
       - build_docker_image
       - golangci-lint
