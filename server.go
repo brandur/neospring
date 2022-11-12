@@ -20,6 +20,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/brandur/neospring/internal/nskey"
+	"github.com/brandur/neospring/internal/nsstore"
 )
 
 const (
@@ -76,7 +77,7 @@ func (e *IfModifiedSinceParseError) Error() string {
 }
 
 type Server struct {
-	boardStore  BoardStore
+	boardStore  nsstore.BoardStore
 	denyList    DenyList
 	httpServer  *http.Server
 	logger      *logrus.Logger
@@ -85,7 +86,7 @@ type Server struct {
 	timeNow     func() time.Time
 }
 
-func NewServer(boardStore BoardStore, denyList DenyList, port int) *Server {
+func NewServer(boardStore nsstore.BoardStore, denyList DenyList, port int) *Server {
 	server := &Server{
 		boardStore:  boardStore,
 		denyList:    denyList,
@@ -154,7 +155,7 @@ func (s *Server) Start(ctx context.Context) error {
 
 func (s *Server) handleGetKey(ctx context.Context, r *http.Request) (*ServerResponse, error) {
 	var (
-		board *MemoryBoard
+		board *nsstore.Board
 		err   error
 		key   = mux.Vars(r)["key"]
 	)
@@ -201,7 +202,7 @@ func (s *Server) handleGetKey(ctx context.Context, r *http.Request) (*ServerResp
 
 	board, err = s.boardStore.Get(ctx, key)
 	if err != nil {
-		if errors.Is(err, ErrKeyNotFound) {
+		if errors.Is(err, nsstore.ErrKeyNotFound) {
 			return nil, notFoundError()
 		}
 
@@ -304,7 +305,7 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 		return nil, NewServerError(http.StatusBadRequest, ErrMessageTimestampInFuture)
 	}
 
-	if timestamp.Add(TimestampTolerance).Before(s.timeNow().Add(-MaxContentAge)) {
+	if timestamp.Add(TimestampTolerance).Before(s.timeNow().Add(-nsstore.MaxContentAge)) {
 		return nil, NewServerError(http.StatusBadRequest, ErrMessageTimestampTooOld)
 	}
 
@@ -328,10 +329,10 @@ func (s *Server) handleIndex(ctx context.Context, r *http.Request) (*ServerRespo
 
 // Randomizes board contents for the test key, as recommended by the Spring '83
 // while fulfilling test key requests.
-func (s *Server) randomizeTestKeyBoard(ctx context.Context) (*MemoryBoard, error) {
+func (s *Server) randomizeTestKeyBoard(ctx context.Context) (*nsstore.Board, error) {
 	content := generateContent()
 
-	board := &MemoryBoard{
+	board := &nsstore.Board{
 		Content:   []byte(content),
 		Signature: s.testKeyPair.SignHex([]byte(content)),
 		Timestamp: s.timeNow(),
