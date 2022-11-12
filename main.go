@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/caarlos0/env/v6"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/xerrors"
 
@@ -126,12 +127,18 @@ func runServe(ctx context.Context) error {
 	}
 
 	denyList := NewMemoryDenyList()
-	store := nsmemstore.NewMemoryBoardStore()
+	logger := logrus.New()
 
-	server := NewServer(store, denyList, config.Port)
+	shutdown := make(chan struct{}, 1)
+	store := nsmemstore.NewMemoryBoardStore(logger)
+	go store.ReapLoop(shutdown)
+
+	server := NewServer(logger, store, denyList, config.Port)
 	if err := server.Start(ctx); err != nil {
 		return err
 	}
+
+	close(shutdown)
 
 	return nil
 }

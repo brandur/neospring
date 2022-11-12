@@ -86,11 +86,11 @@ type Server struct {
 	timeNow     func() time.Time
 }
 
-func NewServer(boardStore nsstore.BoardStore, denyList DenyList, port int) *Server {
+func NewServer(logger *logrus.Logger, boardStore nsstore.BoardStore, denyList DenyList, port int) *Server {
 	server := &Server{
 		boardStore:  boardStore,
 		denyList:    denyList,
-		logger:      logrus.New(),
+		logger:      logger,
 		testKeyPair: nskey.MustParseKeyPairUnchecked(nskey.TestPrivateKey),
 		timeNow:     time.Now,
 	}
