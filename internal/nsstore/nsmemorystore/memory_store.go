@@ -2,6 +2,7 @@ package nsmemorystore
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"time"
 
@@ -14,6 +15,7 @@ type MemoryStore struct {
 	boards          map[string]*nsstore.Board
 	logger          *logrus.Logger
 	mut             sync.RWMutex
+	name            string
 	reapLoopStarted bool
 	timeNow         func() time.Time
 }
@@ -22,6 +24,7 @@ func NewMemoryStore(logger *logrus.Logger) *MemoryStore {
 	return &MemoryStore{
 		boards:  make(map[string]*nsstore.Board),
 		logger:  logger,
+		name:    reflect.TypeOf(MemoryStore{}).Name(),
 		timeNow: time.Now,
 	}
 }
@@ -38,6 +41,7 @@ func (s *MemoryStore) Get(ctx context.Context, key string) (*nsstore.Board, erro
 	// Just in case the cleaner is behind, aggressively prune possibly outdated
 	// content.
 	if s.timeNow().After(board.Timestamp.Add(nsstore.MaxContentAge)) {
+		s.logger.Infof(s.name+": Returning not found for stale key %q created %v", key, board.Timestamp)
 		return nil, nsstore.ErrKeyNotFound
 	}
 
@@ -64,7 +68,7 @@ func (s *MemoryStore) ReapLoop(shutdown <-chan struct{}) {
 
 		select {
 		case <-shutdown:
-			s.logger.Infof("Received shutdown signal")
+			s.logger.Infof(s.name + ": Received shutdown signal")
 			return
 
 		case <-time.After(10 * time.Second):
@@ -88,7 +92,7 @@ func (s *MemoryStore) reap() int {
 
 	s.logger.WithFields(logrus.Fields{
 		"num_reaped": numReaped,
-	}).Infof("Reaped %d board(s)", numReaped)
+	}).Infof(s.name+": Reaped %d board(s)", numReaped)
 
 	return numReaped
 }
