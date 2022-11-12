@@ -1,4 +1,4 @@
-package nsmemstore
+package nsmemorystore
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 	"github.com/brandur/neospring/internal/nsstore"
 )
 
-type MemoryBoardStore struct {
+type MemoryStore struct {
 	boards          map[string]*nsstore.Board
 	logger          *logrus.Logger
 	mut             sync.RWMutex
@@ -18,15 +18,15 @@ type MemoryBoardStore struct {
 	timeNow         func() time.Time
 }
 
-func NewMemoryBoardStore(logger *logrus.Logger) *MemoryBoardStore {
-	return &MemoryBoardStore{
+func NewMemoryStore(logger *logrus.Logger) *MemoryStore {
+	return &MemoryStore{
 		boards:  make(map[string]*nsstore.Board),
 		logger:  logger,
 		timeNow: time.Now,
 	}
 }
 
-func (s *MemoryBoardStore) Get(ctx context.Context, key string) (*nsstore.Board, error) {
+func (s *MemoryStore) Get(ctx context.Context, key string) (*nsstore.Board, error) {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
 
@@ -44,7 +44,7 @@ func (s *MemoryBoardStore) Get(ctx context.Context, key string) (*nsstore.Board,
 	return board, nil
 }
 
-func (s *MemoryBoardStore) Put(ctx context.Context, key string, board *nsstore.Board) error {
+func (s *MemoryStore) Put(ctx context.Context, key string, board *nsstore.Board) error {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 
@@ -52,7 +52,7 @@ func (s *MemoryBoardStore) Put(ctx context.Context, key string, board *nsstore.B
 	return nil
 }
 
-func (s *MemoryBoardStore) ReapLoop(shutdown <-chan struct{}) {
+func (s *MemoryStore) ReapLoop(shutdown <-chan struct{}) {
 	if s.reapLoopStarted {
 		panic("ReapLoop already started -- should only be run once")
 	}
@@ -72,7 +72,7 @@ func (s *MemoryBoardStore) ReapLoop(shutdown <-chan struct{}) {
 	}
 }
 
-func (s *MemoryBoardStore) reap() int {
+func (s *MemoryStore) reap() int {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 

@@ -1,4 +1,4 @@
-package nsmemstore
+package nsmemorystore
 
 import (
 	"context"
@@ -23,7 +23,7 @@ var logger = logrus.New()
 func TestMemoryBoardStore(t *testing.T) {
 	ctx := context.Background()
 	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
-	store := NewMemoryBoardStore(logger)
+	store := NewMemoryStore(logger)
 	store.timeNow = func() time.Time { return stableTime }
 
 	// Nothing stored initially.
@@ -60,7 +60,7 @@ func TestMemoryBoardStore(t *testing.T) {
 func TestMemoryBoardStoreReap(t *testing.T) {
 	ctx := context.Background()
 	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
-	store := NewMemoryBoardStore(logger)
+	store := NewMemoryStore(logger)
 
 	const content = "some board content"
 	board := &nsstore.Board{
@@ -83,7 +83,7 @@ func TestMemoryBoardStoreReap(t *testing.T) {
 func TestMemoryBoardStoreReapLoop(t *testing.T) {
 	ctx := context.Background()
 	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
-	store := NewMemoryBoardStore(logger)
+	store := NewMemoryStore(logger)
 
 	const content = "some board content"
 	board := &nsstore.Board{

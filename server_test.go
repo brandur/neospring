@@ -19,7 +19,7 @@ import (
 
 	"github.com/brandur/neospring/internal/nskey"
 	"github.com/brandur/neospring/internal/nsstore"
-	"github.com/brandur/neospring/internal/nsstore/nsmemstore"
+	"github.com/brandur/neospring/internal/nsstore/nsmemorystore"
 )
 
 const (
@@ -52,7 +52,7 @@ func TestServerHandleGetKey(t *testing.T) {
 		ctx      context.Context
 		denyList *MemoryDenyList
 		server   *Server
-		store    *nsmemstore.MemoryBoardStore
+		store    *nsmemorystore.MemoryStore
 	)
 
 	requestForKey := func(key string) *http.Request {
@@ -64,7 +64,7 @@ func TestServerHandleGetKey(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
-			store = nsmemstore.NewMemoryBoardStore(logger)
+			store = nsmemorystore.NewMemoryStore(logger)
 			denyList = NewMemoryDenyList()
 			server = NewServer(logger, store, denyList, defaultPort)
 			server.timeNow = stableTimeFunc
@@ -171,7 +171,7 @@ func TestServerHandlePutKey(t *testing.T) {
 		ctx      context.Context
 		denyList *MemoryDenyList
 		server   *Server
-		store    *nsmemstore.MemoryBoardStore
+		store    *nsmemorystore.MemoryStore
 	)
 
 	requestForKey := func(key string, content string) *http.Request {
@@ -191,7 +191,7 @@ func TestServerHandlePutKey(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
-			store = nsmemstore.NewMemoryBoardStore(logger)
+			store = nsmemorystore.NewMemoryStore(logger)
 			denyList = NewMemoryDenyList()
 			server = NewServer(logger, store, denyList, defaultPort)
 			server.timeNow = stableTimeFunc

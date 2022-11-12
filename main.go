@@ -13,7 +13,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/brandur/neospring/internal/nskeygen"
-	"github.com/brandur/neospring/internal/nsstore/nsmemstore"
+	"github.com/brandur/neospring/internal/nsstore/nsmemorystore"
 )
 
 const defaultPort = 4434 // 2217 * 2
@@ -130,7 +130,7 @@ func runServe(ctx context.Context) error {
 	logger := logrus.New()
 
 	shutdown := make(chan struct{}, 1)
-	store := nsmemstore.NewMemoryBoardStore(logger)
+	store := nsmemorystore.NewMemoryStore(logger)
 	go store.ReapLoop(shutdown)
 
 	server := NewServer(logger, store, denyList, config.Port)
