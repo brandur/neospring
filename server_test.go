@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/xerrors"
 
@@ -25,6 +26,8 @@ const (
 	samplePrivateKey = "90ba51828ecc30132d4707d55d24456fbd726514cf56ab4668b62392798e2540"
 	samplePublicKey  = "e90e9091b13a6e5194c1fed2728d1fdb6de7df362497d877b8c0b8f0883e1124"
 )
+
+var logger = logrus.New()
 
 // Since the various KeyPair parsing functions only take a private key portion,
 // this test case is here to make sure that the test/sample public keys we have
@@ -61,9 +64,9 @@ func TestServerHandleGetKey(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
-			store = nsmemstore.NewMemoryBoardStore()
+			store = nsmemstore.NewMemoryBoardStore(logger)
 			denyList = NewMemoryDenyList()
-			server = NewServer(store, denyList, defaultPort)
+			server = NewServer(logger, store, denyList, defaultPort)
 			server.timeNow = stableTimeFunc
 
 			test(t)
@@ -188,9 +191,9 @@ func TestServerHandlePutKey(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
-			store = nsmemstore.NewMemoryBoardStore()
+			store = nsmemstore.NewMemoryBoardStore(logger)
 			denyList = NewMemoryDenyList()
-			server = NewServer(store, denyList, defaultPort)
+			server = NewServer(logger, store, denyList, defaultPort)
 			server.timeNow = stableTimeFunc
 
 			test(t)
@@ -349,7 +352,7 @@ func TestServerWrapEndpoint(t *testing.T) {
 			ctxContainer = &ContextContainer{}
 			ctx = context.WithValue(ctx, contextContainerContextKey{}, ctxContainer)
 			recorder = httptest.NewRecorder()
-			server = NewServer(nil, nil, defaultPort)
+			server = NewServer(logger, nil, nil, defaultPort)
 
 			test(t)
 		}
