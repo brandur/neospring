@@ -36,7 +36,7 @@ func TestGCPStorageStoreRead(t *testing.T) {
 	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 	store := NewGCPStorageStore(ctx, logger, sampleServiceAccountJSON, "neospring_board")
 
-	store.storageReader = func(_ context.Context, bucket, key string) (io.Reader, error) {
+	store.storageReader = func(_ context.Context, bucket, key string) (io.ReadCloser, error) {
 		require.Equal(t, "neospring_board", bucket)
 		require.Equal(t, samplePublicKey, key)
 		return nil, storage.ErrObjectNotExist
@@ -54,11 +54,11 @@ func TestGCPStorageStoreRead(t *testing.T) {
 		Timestamp: stableTime,
 	}
 
-	store.storageReader = func(_ context.Context, bucket, key string) (io.Reader, error) {
+	store.storageReader = func(_ context.Context, bucket, key string) (io.ReadCloser, error) {
 		require.Equal(t, "neospring_board", bucket)
 		require.Equal(t, samplePublicKey, key)
 
-		return bytes.NewReader(mustJSONMarshal(t, board)), nil
+		return &readCloser{bytes.NewReader(mustJSONMarshal(t, board))}, nil
 	}
 
 	{
@@ -101,6 +101,14 @@ func TestGCPStorageStorePut(t *testing.T) {
 	var boardFromStore serializedBoard
 	mustJSONUnmarshal(t, b.Bytes(), &boardFromStore)
 	require.Equal(t, board, boardFromStore.ToBoard())
+}
+
+type readCloser struct {
+	*bytes.Reader
+}
+
+func (rc *readCloser) Close() error {
+	return nil
 }
 
 type writeCloser struct {
