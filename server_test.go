@@ -17,6 +17,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/brandur/neospring/internal/nskey"
+	"github.com/brandur/neospring/internal/nsstore"
+	"github.com/brandur/neospring/internal/nsstore/nsmemstore"
 )
 
 const (
@@ -47,7 +49,7 @@ func TestServerHandleGetKey(t *testing.T) {
 		ctx      context.Context
 		denyList *MemoryDenyList
 		server   *Server
-		store    *MemoryBoardStore
+		store    *nsmemstore.MemoryBoardStore
 	)
 
 	requestForKey := func(key string) *http.Request {
@@ -59,7 +61,7 @@ func TestServerHandleGetKey(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
-			store = NewMemoryBoardStore()
+			store = nsmemstore.NewMemoryBoardStore()
 			denyList = NewMemoryDenyList()
 			server = NewServer(store, denyList, defaultPort)
 			server.timeNow = stableTimeFunc
@@ -68,8 +70,8 @@ func TestServerHandleGetKey(t *testing.T) {
 		}
 	}
 
-	storeKeyContent := func(keyPair *nskey.KeyPair, timestamp time.Time, content string) *MemoryBoard {
-		board := &MemoryBoard{
+	storeKeyContent := func(keyPair *nskey.KeyPair, timestamp time.Time, content string) *nsstore.Board {
+		board := &nsstore.Board{
 			Content:   []byte(content),
 			Signature: keyPair.SignHex([]byte(content)),
 			Timestamp: timestamp,
@@ -166,7 +168,7 @@ func TestServerHandlePutKey(t *testing.T) {
 		ctx      context.Context
 		denyList *MemoryDenyList
 		server   *Server
-		store    *MemoryBoardStore
+		store    *nsmemstore.MemoryBoardStore
 	)
 
 	requestForKey := func(key string, content string) *http.Request {
@@ -186,7 +188,7 @@ func TestServerHandlePutKey(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
-			store = NewMemoryBoardStore()
+			store = nsmemstore.NewMemoryBoardStore()
 			denyList = NewMemoryDenyList()
 			server = NewServer(store, denyList, defaultPort)
 			server.timeNow = stableTimeFunc
@@ -195,9 +197,9 @@ func TestServerHandlePutKey(t *testing.T) {
 		}
 	}
 
-	storeKeyContent := func(keyPair *nskey.KeyPair, timestamp time.Time) *MemoryBoard {
+	storeKeyContent := func(keyPair *nskey.KeyPair, timestamp time.Time) *nsstore.Board {
 		content := []byte("some test board content")
-		board := &MemoryBoard{
+		board := &nsstore.Board{
 			Content:   content,
 			Signature: keyPair.SignHex(content),
 			Timestamp: timestamp,
@@ -318,7 +320,7 @@ func TestServerHandlePutKey(t *testing.T) {
 	t.Run("TimestampTooOld", setup(func(t *testing.T) {
 		keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 
-		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(-MaxContentAge).Add(-3*time.Hour))+" some other content")) //nolint:lll
+		_, err := server.handlePutKey(ctx, signedRequestForKey(keyPair, timestampTag(stableTime.Add(-nsstore.MaxContentAge).Add(-3*time.Hour))+" some other content")) //nolint:lll
 		requireServerError(t, NewServerError(http.StatusBadRequest, ErrMessageTimestampTooOld), err)
 	}))
 

@@ -12,6 +12,7 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/brandur/neospring/internal/nskeygen"
+	"github.com/brandur/neospring/internal/nsstore/nsmemstore"
 )
 
 const defaultPort = 4434 // 2217 * 2
@@ -125,7 +126,7 @@ func runServe(ctx context.Context) error {
 	}
 
 	denyList := NewMemoryDenyList()
-	store := NewMemoryBoardStore()
+	store := nsmemstore.NewMemoryBoardStore()
 
 	server := NewServer(store, denyList, config.Port)
 	if err := server.Start(ctx); err != nil {
