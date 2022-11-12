@@ -19,11 +19,13 @@ import (
 	"google.golang.org/api/option"
 
 	"github.com/brandur/neospring/internal/nsstore"
+	"github.com/brandur/neospring/internal/nsstore/nsmemorystore"
 )
 
 type GCPStorageStore struct {
 	bucket        string
 	logger        *logrus.Logger
+	memoryStore   *nsmemorystore.MemoryStore
 	name          string
 	storageClient *storage.Client
 
@@ -50,6 +52,7 @@ func NewGCPStorageStore(ctx context.Context, logger *logrus.Logger, serviceAccou
 	return &GCPStorageStore{
 		bucket:        bucket,
 		logger:        logger,
+		memoryStore:   nsmemorystore.NewMemoryStore(logger),
 		name:          reflect.TypeOf(GCPStorageStore{}).Name(),
 		storageClient: storageClient,
 		storageReader: func(ctx context.Context, bucket, key string) (io.ReadCloser, error) {
@@ -63,6 +66,13 @@ func NewGCPStorageStore(ctx context.Context, logger *logrus.Logger, serviceAccou
 }
 
 func (s *GCPStorageStore) Get(ctx context.Context, key string) (*nsstore.Board, error) {
+	// Check to see if we might have this cached in our memory store first
+	// before going to slower GCP storage.
+	board, err := s.memoryStore.Get(ctx, key)
+	if err == nil {
+		return board, nil
+	}
+
 	reader, err := s.storageReader(ctx, s.bucket, key)
 	if err != nil {
 		if errors.Is(err, storage.ErrObjectNotExist) {
@@ -73,19 +83,25 @@ func (s *GCPStorageStore) Get(ctx context.Context, key string) (*nsstore.Board, 
 	}
 	defer reader.Close()
 
-	var board serializedBoard
-	if err := json.NewDecoder(reader).Decode(&board); err != nil {
+	var storageBoard serializedBoard
+	if err := json.NewDecoder(reader).Decode(&storageBoard); err != nil {
 		return nil, xerrors.Errorf("error decoding board: %w", err)
 	}
 
 	// Just in case lifecycle expiration is behind, aggressively prune possibly
 	// outdated content.
-	if s.timeNow().After(board.Timestamp.Add(nsstore.MaxContentAge)) {
-		s.logger.Infof(s.name+": Returning not found for stale key %q created %v", key, board.Timestamp)
+	if s.timeNow().After(storageBoard.Timestamp.Add(nsstore.MaxContentAge)) {
+		s.logger.Infof(s.name+": Returning not found for stale key %q created %v", key, storageBoard.Timestamp)
 		return nil, nsstore.ErrKeyNotFound
 	}
 
-	return board.ToBoard(), nil
+	board = storageBoard.ToBoard()
+
+	if err := s.memoryStore.Put(ctx, key, board); err != nil {
+		return nil, err
+	}
+
+	return board, nil
 }
 
 func (s *GCPStorageStore) Put(ctx context.Context, key string, board *nsstore.Board) error {
@@ -99,7 +115,26 @@ func (s *GCPStorageStore) Put(ctx context.Context, key string, board *nsstore.Bo
 		return xerrors.Errorf("error closing writer: %w", err)
 	}
 
+	if err := s.memoryStore.Put(ctx, key, board); err != nil {
+		return err
+	}
+
 	return nil
+}
+
+// For testing purposes only.
+func (s *GCPStorageStore) SetTimeNow(timeNow func() time.Time) {
+	s.memoryStore.SetTimeNow(timeNow)
+	s.timeNow = timeNow
+}
+
+// ReapLoop starts a reaper forever loop that periodically cleans up expired
+// keys. It blocks, so should be started on a goroutine.
+//
+// Only reaps the struct's internal memory store rather than GCP itself, so a
+// delete lifetime policy still needs to be set on the GCP bucket in use.
+func (s *GCPStorageStore) ReapLoop(shutdown <-chan struct{}) {
+	s.memoryStore.ReapLoop(shutdown)
 }
 
 // Very similar to `nsstore.Board`, but a specific serialized format stored to a

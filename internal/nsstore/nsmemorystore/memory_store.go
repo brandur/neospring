@@ -56,6 +56,8 @@ func (s *MemoryStore) Put(ctx context.Context, key string, board *nsstore.Board)
 	return nil
 }
 
+// ReapLoop starts a reaper forever loop that periodically cleans up expired
+// keys. It blocks, so should be started on a goroutine.
 func (s *MemoryStore) ReapLoop(shutdown <-chan struct{}) {
 	if s.reapLoopStarted {
 		panic("ReapLoop already started -- should only be run once")
@@ -74,6 +76,11 @@ func (s *MemoryStore) ReapLoop(shutdown <-chan struct{}) {
 		case <-time.After(10 * time.Second):
 		}
 	}
+}
+
+// For testing purposes only.
+func (s *MemoryStore) SetTimeNow(timeNow func() time.Time) {
+	s.timeNow = timeNow
 }
 
 func (s *MemoryStore) reap() int {
