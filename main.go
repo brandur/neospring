@@ -138,7 +138,9 @@ func runServe(ctx context.Context) error {
 	var store nsstore.BoardStore
 	switch {
 	case config.GCPStorageBucket != "":
-		store = nsgcpstoragestore.NewGCPStorageStore(ctx, logger, config.GCPCredentialsJSON, config.GCPStorageBucket)
+		gcpStore := nsgcpstoragestore.NewGCPStorageStore(ctx, logger, config.GCPCredentialsJSON, config.GCPStorageBucket)
+		go gcpStore.ReapLoop(shutdown)
+		store = gcpStore
 
 	default:
 		memoryStore := nsmemorystore.NewMemoryStore(logger)

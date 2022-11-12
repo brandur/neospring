@@ -24,7 +24,7 @@ func TestMemoryBoardStore(t *testing.T) {
 	ctx := context.Background()
 	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 	store := NewMemoryStore(logger)
-	store.timeNow = func() time.Time { return stableTime }
+	store.SetTimeNow(func() time.Time { return stableTime })
 
 	// Nothing stored initially.
 	{
@@ -51,7 +51,7 @@ func TestMemoryBoardStore(t *testing.T) {
 	// When pushing time far into the future so that the content is after it's
 	// expiry, content is considered not present again.
 	{
-		store.timeNow = func() time.Time { return stableTime.Add(nsstore.MaxContentAge).Add(10 * time.Minute) }
+		store.SetTimeNow(func() time.Time { return stableTime.Add(nsstore.MaxContentAge).Add(10 * time.Minute) })
 		_, err := store.Get(ctx, keyPair.PublicKey)
 		require.ErrorIs(t, nsstore.ErrKeyNotFound, err)
 	}
@@ -73,7 +73,7 @@ func TestMemoryBoardStoreReap(t *testing.T) {
 	require.Len(t, store.boards, 1)
 
 	// Move into the future
-	store.timeNow = func() time.Time { return stableTime.Add(nsstore.MaxContentAge).Add(10 * time.Minute) }
+	store.SetTimeNow(func() time.Time { return stableTime.Add(nsstore.MaxContentAge).Add(10 * time.Minute) })
 
 	numReaped := store.reap()
 	require.Equal(t, 1, numReaped)
@@ -96,7 +96,7 @@ func TestMemoryBoardStoreReapLoop(t *testing.T) {
 	require.Len(t, store.boards, 1)
 
 	// Move into the future
-	store.timeNow = func() time.Time { return stableTime.Add(nsstore.MaxContentAge).Add(10 * time.Minute) }
+	store.SetTimeNow(func() time.Time { return stableTime.Add(nsstore.MaxContentAge).Add(10 * time.Minute) })
 
 	shutdown := make(chan struct{}, 1)
 	close(shutdown)
