@@ -113,7 +113,7 @@ type KeyPair struct {
 func KeyPairFromRaw(privateKey ed25519.PrivateKey) *KeyPair {
 	return &KeyPair{
 		Key:             *KeyFromRaw(privateKey.Public().(ed25519.PublicKey)),
-		PrivateKey:      hex.EncodeToString(privateKey),
+		PrivateKey:      hex.EncodeToString(privateKey.Seed()),
 		privateKeyBytes: privateKey,
 	}
 }

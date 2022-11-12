@@ -63,7 +63,7 @@ func TestKeyPairFromRaw(t *testing.T) {
 	keyPair := KeyPairFromRaw(privateKey)
 	require.Equal(t, hex.EncodeToString(publicKey), keyPair.PublicKey)
 	require.Equal(t, publicKey, keyPair.publicKeyBytes)
-	require.Equal(t, hex.EncodeToString(privateKey), keyPair.PrivateKey)
+	require.Equal(t, hex.EncodeToString(privateKey.Seed()), keyPair.PrivateKey)
 	require.Equal(t, privateKey, keyPair.privateKeyBytes)
 }
 
