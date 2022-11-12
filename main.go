@@ -13,6 +13,8 @@ import (
 	"golang.org/x/xerrors"
 
 	"github.com/brandur/neospring/internal/nskeygen"
+	"github.com/brandur/neospring/internal/nsstore"
+	"github.com/brandur/neospring/internal/nsstore/nsgcpstoragestore"
 	"github.com/brandur/neospring/internal/nsstore/nsmemorystore"
 )
 
@@ -118,7 +120,9 @@ func runKeygen(ctx context.Context) error {
 
 func runServe(ctx context.Context) error {
 	type Config struct {
-		Port int `env:"PORT" envDefault:"4434"`
+		GCPCredentialsJSON string `env:"GCP_CREDENTIALS_JSON"`
+		GCPStorageBucket   string `env:"GCP_STORAGE_BUCKET"`
+		Port               int    `env:"PORT" envDefault:"4434"`
 	}
 
 	config := Config{}
@@ -130,8 +134,17 @@ func runServe(ctx context.Context) error {
 	logger := logrus.New()
 
 	shutdown := make(chan struct{}, 1)
-	store := nsmemorystore.NewMemoryStore(logger)
-	go store.ReapLoop(shutdown)
+
+	var store nsstore.BoardStore
+	switch {
+	case config.GCPStorageBucket != "":
+		store = nsgcpstoragestore.NewGCPStorageStore(ctx, logger, config.GCPCredentialsJSON, config.GCPStorageBucket)
+
+	default:
+		memoryStore := nsmemorystore.NewMemoryStore(logger)
+		go memoryStore.ReapLoop(shutdown)
+		store = memoryStore
+	}
 
 	server := NewServer(logger, store, denyList, config.Port)
 	if err := server.Start(ctx); err != nil {

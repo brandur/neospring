@@ -1,8 +1,10 @@
-# GCP service account for building and deploying to Google Cloud Run
+# GCP service accounts
 
 I'd recommend not even trying to use the UI, which is awful. Instead, do things via CLI.
 
-Export some variables like name and project (project must exist already):
+# Service account for building and deploying to Google Cloud Run
+
+Export name and project (project must exist already):
 
     $ export SA_NAME="google-cloud-run-deploy-v4"
     $ export PROJECT="neospring"
@@ -20,9 +22,31 @@ Add necessary roles to the service account:
 
 Create a service account JSON containing a secret:
 
-    $ gcloud iam service-accounts keys create service-account-key.json --iam-account=$SA_NAME@$PROJECT.iam.gserviceaccount.com
+    $ gcloud iam service-accounts keys create service-account-key-deploy.json --iam-account=$SA_NAME@$PROJECT.iam.gserviceaccount.com
 
-Use the contents of `service-account-key.json` to put in the `GCP_CREDENTIALS_JSON` GitHub Actions secret for the build to work.
+Use the contents of `service-account-key-deploy.json` to put in the `GCP_CREDENTIALS_JSON` GitHub Actions secret for the build to work.
+
+# Service account for using storage service
+
+Export name and project (project must exist already):
+
+    $ export SA_NAME="google-cloud-storage"
+    $ export PROJECT="neospring"
+
+Create a service account:
+
+    $ gcloud iam service-accounts create $SA_NAME --display-name=$SA_NAME --project $PROJECT --description="Used to create and get Spring '83 boards through GCP's storage service."
+
+Add necessary roles to the service account:
+
+    $ gcloud projects add-iam-policy-binding neospring --member="serviceAccount:$SA_NAME@$PROJECT.iam.gserviceaccount.com" --role="roles/storage.objectCreator"
+    $ gcloud projects add-iam-policy-binding neospring --member="serviceAccount:$SA_NAME@$PROJECT.iam.gserviceaccount.com" --role="roles/storage.objectViewer"
+
+Create a service account JSON containing a secret:
+
+    $ gcloud iam service-accounts keys create service-account-key-storage.json --iam-account=$SA_NAME@$PROJECT.iam.gserviceaccount.com
+
+Use the contents of `service-account-key-storage.json` to put in the `GCP_CREDENTIALS_JSON` Google Cloud Run env var to use GCP storage as a backend.
 
 ## Debugging
 
