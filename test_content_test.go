@@ -36,3 +36,10 @@ Reality is that which, when you stop believing in it, doesn't go away.
 
 ---`))
 }
+
+func TestQuotes(t *testing.T) {
+	require.Greater(t, len(quotes), 1)
+	for _, quote := range quotes {
+		require.LessOrEqual(t, len([]byte(quote)), MaxContentSize)
+	}
+}
