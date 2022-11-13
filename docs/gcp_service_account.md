@@ -39,8 +39,7 @@ Create a service account:
 
 Add necessary roles to the service account:
 
-    $ gcloud projects add-iam-policy-binding neospring --member="serviceAccount:$SA_NAME@$PROJECT.iam.gserviceaccount.com" --role="roles/storage.objectCreator"
-    $ gcloud projects add-iam-policy-binding neospring --member="serviceAccount:$SA_NAME@$PROJECT.iam.gserviceaccount.com" --role="roles/storage.objectViewer"
+    $ gcloud projects add-iam-policy-binding neospring --member="serviceAccount:$SA_NAME@$PROJECT.iam.gserviceaccount.com" --role="roles/storage.objectAdmin"
 
 Create a service account JSON containing a secret:
 
@@ -76,3 +75,5 @@ A list of roles that I tried, but which didn't seem to be needed in the end with
 * `roles/iam.serviceAccountUser`
 * `roles/serviceusage.serviceUsageConsumer`
 * `run.admin`
+
+And for the storage service, started with `storage.objectCreator` and `storage.objectViewer`, but found that `storage.objectAdmin` was required.
