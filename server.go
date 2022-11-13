@@ -330,7 +330,7 @@ func (s *Server) handleIndex(ctx context.Context, r *http.Request) (*ServerRespo
 // Randomizes board contents for the test key, as recommended by the Spring '83
 // while fulfilling test key requests.
 func (s *Server) randomizeTestKeyBoard(ctx context.Context) (*nsstore.Board, error) {
-	content := generateContent()
+	content := getRandomQuote()
 
 	board := &nsstore.Board{
 		Content:   []byte(content),
@@ -419,10 +419,6 @@ type ServerResponse struct {
 
 func NewServerResponse(statusCode int, body []byte, header http.Header) *ServerResponse {
 	return &ServerResponse{Body: body, Header: header, StatusCode: statusCode}
-}
-
-func generateContent() string {
-	return "this is some test content and it should probably be expanded upon"
 }
 
 // From spec: <time datetime="YYYY-MM-DDTHH:MM:SSZ">.
