@@ -73,7 +73,7 @@ func (s *MemoryStore) ReapLoop(shutdown <-chan struct{}) {
 			s.logger.Infof(s.name + ": Received shutdown signal")
 			return
 
-		case <-time.After(10 * time.Second):
+		case <-time.After(1 * time.Minute):
 		}
 	}
 }
