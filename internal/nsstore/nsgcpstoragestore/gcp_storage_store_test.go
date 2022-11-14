@@ -144,7 +144,7 @@ func TestGCPStorageStoreReapLoop(t *testing.T) {
 
 	// We pre-closed the shutdown channel, so this should run once, notice the
 	// shutdown, and exit.
-	store.ReapLoop(shutdown)
+	store.ReapLoop(ctx, shutdown)
 }
 
 type readCloser struct {

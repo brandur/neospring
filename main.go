@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 
@@ -138,17 +139,14 @@ func runServe(ctx context.Context) error {
 	var store nsstore.BoardStore
 	switch {
 	case config.GCPStorageBucket != "":
-		logger.Infof("Activating GCP storage board store")
-		gcpStore := nsgcpstoragestore.NewGCPStorageStore(ctx, logger, config.GCPCredentialsJSON, config.GCPStorageBucket)
-		go gcpStore.ReapLoop(shutdown)
-		store = gcpStore
+		store = nsgcpstoragestore.NewGCPStorageStore(ctx, logger, config.GCPCredentialsJSON, config.GCPStorageBucket)
 
 	default:
-		logger.Infof("Activating memory board store")
-		memoryStore := nsmemorystore.NewMemoryStore(logger)
-		go memoryStore.ReapLoop(shutdown)
-		store = memoryStore
+		store = nsmemorystore.NewMemoryStore(logger)
 	}
+
+	logger.Infof("Activating store: %s", reflect.TypeOf(store).Elem().Name())
+	go store.ReapLoop(ctx, shutdown)
 
 	server := NewServer(logger, store, denyList, config.Port)
 	if err := server.Start(ctx); err != nil {
