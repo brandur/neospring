@@ -220,6 +220,10 @@ func TestServerHandlePutKey(t *testing.T) {
 		requireServerResponse(t, NewServerResponse(http.StatusOK, []byte(MessageKeyUpdated), http.Header{
 			"Spring-Version": []string{"83"},
 		}), resp)
+
+		// Make sure content was actually persisted.
+		_, err = store.Get(ctx, keyPair.PublicKey)
+		require.NoError(t, err)
 	}))
 
 	t.Run("TestKey", setup(func(t *testing.T) {

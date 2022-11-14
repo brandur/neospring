@@ -318,6 +318,11 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 		}
 	}
 
+	//nolint:lll
+	if err := s.boardStore.Put(ctx, key, &nsstore.Board{Content: content, Signature: sigStr, Timestamp: timestamp}); err != nil {
+		return nil, xerrors.Errorf("error storing board content: %w", err)
+	}
+
 	return NewServerResponse(http.StatusOK, []byte(MessageKeyUpdated), http.Header{
 		"Spring-Version": []string{"83"},
 	}), nil
