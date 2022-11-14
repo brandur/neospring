@@ -6,6 +6,10 @@ The implementation is largely complete, but still needs shoring up operationally
 
 I know there's other Go-based implementations, but this is a personal one just written for fun. Don't rely on it for long-term production use.
 
+A hosted version of this runs at [neospring.brandur.org](https://neospring.brandur.org). You can get my Spring '83 board here:
+
+    $ curl https://neospring.brandur.org/2c98169d0b6fa73cab5a830be8dde53c5f388d5c6f8e6f756b6b6dbcc83e1124
+
 ## Usage
 
     $ go build . && ./neospring
