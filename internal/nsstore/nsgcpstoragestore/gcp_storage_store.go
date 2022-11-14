@@ -135,8 +135,8 @@ func (s *GCPStorageStore) SetTimeNow(timeNow func() time.Time) {
 //
 // Only reaps the struct's internal memory store rather than GCP itself, so a
 // delete lifetime policy still needs to be set on the GCP bucket in use.
-func (s *GCPStorageStore) ReapLoop(shutdown <-chan struct{}) {
-	s.memoryStore.ReapLoop(shutdown)
+func (s *GCPStorageStore) ReapLoop(ctx context.Context, shutdown <-chan struct{}) {
+	s.memoryStore.ReapLoop(ctx, shutdown)
 }
 
 // Very similar to `nsstore.Board`, but a specific serialized format stored to a
