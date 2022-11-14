@@ -115,6 +115,8 @@ func (s *GCPStorageStore) Put(ctx context.Context, key string, board *nsstore.Bo
 		return xerrors.Errorf("error closing writer: %w", err)
 	}
 
+	s.logger.Infof(s.name+": Stored key %q to GCP storage", key)
+
 	if err := s.memoryStore.Put(ctx, key, board); err != nil {
 		return err
 	}
