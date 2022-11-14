@@ -99,7 +99,7 @@ func (s *MemoryStore) reap() int {
 
 	s.logger.WithFields(logrus.Fields{
 		"num_reaped": numReaped,
-		"total":      s.boards,
+		"total":      len(s.boards),
 	}).Infof(s.name+": Reaped %d board(s) [total: %d]", numReaped, len(s.boards))
 
 	return numReaped
