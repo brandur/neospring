@@ -340,6 +340,46 @@ func TestServerHandlePutKey(t *testing.T) {
 	}))
 }
 
+// High-level integration tests that exercise the entire stack including
+// middleware. Each route should only get one assertion -- the bulk of logic
+// testing should go into specific handler tests above.
+func TestServerRouter(t *testing.T) {
+	ctx := context.Background()
+	denyList := NewMemoryDenyList()
+	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
+	store := nsmemorystore.NewMemoryStore(logger)
+
+	server := NewServer(logger, store, denyList, defaultPort)
+	server.timeNow = stableTimeFunc
+
+	serveReq := func(ctx context.Context, method, path string, header http.Header, body []byte) {
+		var bodyReader io.Reader
+		if body != nil {
+			bodyReader = bytes.NewReader(body)
+		}
+
+		r, _ := http.NewRequestWithContext(ctx, method, "http://spring83.example.com"+path, bodyReader)
+		r.Header = header
+
+		recorder := httptest.NewRecorder()
+		server.router.ServeHTTP(recorder, r)
+
+		res := recorder.Result()   //nolint:bodyclose
+		if res.StatusCode >= 400 { //nolint:usestdlibvars
+			require.Failf(t, "Request failure", "Expected non-error status code, was %d with body: %s",
+				res.StatusCode,
+				recorder.Body.String(),
+			)
+		}
+	}
+
+	content := []byte(timestampTag(stableTime) + " some content")
+
+	serveReq(ctx, http.MethodGet, "/", nil, nil)
+	serveReq(ctx, http.MethodPut, "/"+keyPair.PublicKey, http.Header{"Spring-Signature": []string{keyPair.SignHex(content)}}, content) //nolint:lll
+	serveReq(ctx, http.MethodGet, "/"+keyPair.PublicKey, nil, nil)
+}
+
 func TestServerWrapEndpoint(t *testing.T) {
 	var (
 		ctx          context.Context

@@ -111,8 +111,8 @@ func TestInspectableWriterMiddlewareWrapper(t *testing.T) {
 
 	t.Run("TracksStatus", setup(func(t *testing.T) {
 		recorder := httptest.NewRecorder()
-		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
-		handler.ServeHTTP(recorder, req)
+		r := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, r)
 
 		require.Equal(t, http.StatusCreated, inspectableWriter.StatusCode)
 		require.Equal(t, "hello", inspectableWriter.Body.String())
@@ -125,8 +125,8 @@ func TestInspectableWriterMiddlewareWrapper(t *testing.T) {
 		}
 
 		recorder := httptest.NewRecorder()
-		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
-		handler.ServeHTTP(recorder, req)
+		r := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, r)
 
 		require.Equal(t, http.StatusOK, inspectableWriter.StatusCode)
 	}))
@@ -160,8 +160,8 @@ func TestTimeoutMiddlewareWrapper(t *testing.T) {
 		}
 
 		recorder := httptest.NewRecorder()
-		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
-		handler.ServeHTTP(recorder, req)
+		r := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, r)
 
 		require.Equal(t, http.StatusCreated, recorder.Result().StatusCode) //nolint:bodyclose
 	}))
@@ -174,8 +174,8 @@ func TestTimeoutMiddlewareWrapper(t *testing.T) {
 		cancel()
 
 		recorder := httptest.NewRecorder()
-		req := mustNewRequest(cancelCtx, http.MethodGet, "https://example.com", nil, nil)
-		handler.ServeHTTP(recorder, req)
+		r := mustNewRequest(cancelCtx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, r)
 
 		require.Equal(t, http.StatusGatewayTimeout, recorder.Result().StatusCode) //nolint:bodyclose
 		require.Regexp(t,
@@ -194,8 +194,8 @@ func TestTimeoutMiddlewareWrapper(t *testing.T) {
 		}
 
 		recorder := httptest.NewRecorder()
-		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
-		handler.ServeHTTP(recorder, req)
+		r := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, r)
 
 		require.Equal(t, http.StatusGatewayTimeout, recorder.Result().StatusCode) //nolint:bodyclose
 		require.Regexp(t,
