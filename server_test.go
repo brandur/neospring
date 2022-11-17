@@ -340,6 +340,12 @@ func TestServerHandlePutKey(t *testing.T) {
 	}))
 }
 
+func TestParseTemplates(t *testing.T) {
+	server := NewServer(logger, nil, nil, defaultPort)
+	err := server.parseTemplates()
+	require.NoError(t, err)
+}
+
 // High-level integration tests that exercise the entire stack including
 // middleware. Each route should only get one assertion -- the bulk of logic
 // testing should go into specific handler tests above.

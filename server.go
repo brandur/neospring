@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/ed25519"
+	_ "embed"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"html/template"
 	"io"
 	"net/http"
 	"os"
@@ -84,6 +87,9 @@ type Server struct {
 	router      *mux.Router
 	testKeyPair *nskey.KeyPair
 	timeNow     func() time.Time
+
+	// Templates
+	indexTmpl *template.Template
 }
 
 func NewServer(logger *logrus.Logger, boardStore nsstore.BoardStore, denyList DenyList, port int) *Server {
@@ -93,6 +99,10 @@ func NewServer(logger *logrus.Logger, boardStore nsstore.BoardStore, denyList De
 		logger:      logger,
 		testKeyPair: nskey.MustParseKeyPairUnchecked(nskey.TestPrivateKey),
 		timeNow:     time.Now,
+	}
+
+	if err := server.parseTemplates(); err != nil {
+		panic(err)
 	}
 
 	router := mux.NewRouter()
@@ -345,7 +355,39 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 }
 
 func (s *Server) handleIndex(ctx context.Context, r *http.Request) (*ServerResponse, error) {
-	return NewServerResponse(http.StatusOK, []byte("hello"), nil), nil
+	var buf bytes.Buffer
+
+	if err := s.indexTmpl.Execute(&buf, map[string]any{
+		"BoardTTLDays": int(nsstore.MaxContentAge.Hours() / 24),
+	}); err != nil {
+		return nil, xerrors.Errorf("error executing template: %w", err)
+	}
+
+	return NewServerResponse(http.StatusOK, buf.Bytes(), nil), nil
+}
+
+var (
+	//go:embed index.tmpl.html
+	indexTmplData string
+)
+
+func (s *Server) parseTemplates() error {
+	parse := func(name, data string) (*template.Template, error) {
+		tmpl, err := template.New(name).Parse(data)
+		if err != nil {
+			return nil, xerrors.Errorf("error parsing template: %w", err)
+		}
+		return tmpl, err
+	}
+
+	var err error
+
+	s.indexTmpl, err = parse("index", indexTmplData)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Randomizes board contents for the test key, as recommended by the Spring '83

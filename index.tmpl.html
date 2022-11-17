@@ -1,0 +1,29 @@
+<h1>neospring</h1>
+
+<p>
+    This is an installation of <a href="https://github.com/brandur/neospring">Neospring</a>, an implementation of
+    the <a href="https://github.com/robinsloan/spring-83">Spring '83</a> protocol.
+</p>
+
+<p>
+    If this is <a href="https://neospring.brandur.org">neospring.brandur.org</a>,
+    then it's run <a href="https://brandur.org">by Brandur</a>
+    (<code>brandur@</code> my domain) and hosts my board, which you can request like
+    so:
+</p>
+
+<pre>
+    <code>
+        $ curl http://localhost:4434/ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0583
+    </code>
+</pre>
+
+<p>
+    Board TTL is configured to be {{.BoardTTLDays}} days, as recommended by the specification.
+</p>
+
+<p>
+    Server code is written to be highly available and for robustness, and has a
+    comprehensive test suite, but so far has little real-world vetting so far,
+    so use with caution.
+</p>
