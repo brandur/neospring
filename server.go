@@ -97,8 +97,23 @@ func NewServer(logger *logrus.Logger, boardStore nsstore.BoardStore, denyList De
 
 	router := mux.NewRouter()
 
+	//
+	// Tier 0 middleware: Super low-level ones like context containers.
+	//
+
 	router.Use((&ContextContainerMiddleware{}).Wrapper)
+
+	//
+	// Tier 1 middleware: Canonical log line.
+	//
+
 	router.Use((&CanonicalLogLineMiddleware{logger: server.logger}).Wrapper)
+
+	//
+	// Tier 2 middleware: Middleware that can modify the response.
+	//
+
+	router.Use(NewTimeoutMiddleware(10 * time.Second).Wrapper) // a little lower than Google Cloud Run's 12 second timeout
 	router.Use((&CORSMiddleware{}).Wrapper)
 
 	router.Handle("/", server.wrapEndpoint(server.handleIndex)).Methods(http.MethodGet)

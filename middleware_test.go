@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
@@ -77,4 +78,77 @@ func TestContextContainerMiddleware(t *testing.T) {
 	router.ServeHTTP(recorder, mustNewRequest(ctx, http.MethodGet, "/hello", nil, nil))
 
 	require.Equal(t, http.StatusCreated, ctxContainer.StatusCode)
+}
+
+func TestTimeoutMiddlewareWrapper(t *testing.T) {
+	var (
+		ctx         context.Context
+		handler     http.Handler
+		handlerFunc func(w http.ResponseWriter, r *http.Request)
+	)
+
+	setup := func(test func(*testing.T)) func(*testing.T) {
+		return func(t *testing.T) {
+			ctx = context.Background()
+
+			handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if handlerFunc != nil {
+					handlerFunc(w, r)
+				}
+			})
+			handler = NewTimeoutMiddleware(50 * time.Millisecond).Wrapper(handler)
+
+			test(t)
+		}
+	}
+
+	t.Run("DoesNothingWithoutTimeout", setup(func(t *testing.T) {
+		handlerFunc = func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusCreated)
+		}
+
+		recorder := httptest.NewRecorder()
+		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, req)
+
+		//nolint:bodyclose
+		require.Equal(t, http.StatusCreated, recorder.Result().StatusCode)
+	}))
+
+	t.Run("HandlesCanceled", setup(func(t *testing.T) {
+		handlerFunc = func(_ http.ResponseWriter, r *http.Request) {
+		}
+
+		cancelCtx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		recorder := httptest.NewRecorder()
+		req := mustNewRequest(cancelCtx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, req)
+
+		require.Equal(t, http.StatusGatewayTimeout, recorder.Result().StatusCode) //nolint:bodyclose
+		require.Regexp(t,
+			`\AThe request was canceled after 0\.\d+s \(maximum request time is 0\.050000s\).\z`,
+			recorder.Body.String())
+	}))
+
+	t.Run("HandlesTimeout", setup(func(t *testing.T) {
+		handlerFunc = func(_ http.ResponseWriter, r *http.Request) {
+			select {
+			case <-time.After(5 * time.Second):
+				require.Fail(t, "Timed out waiting for cancellation")
+			case <-r.Context().Done():
+				t.Logf("Context was cancelled: %s", r.Context().Err())
+			}
+		}
+
+		recorder := httptest.NewRecorder()
+		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, req)
+
+		require.Equal(t, http.StatusGatewayTimeout, recorder.Result().StatusCode) //nolint:bodyclose
+		require.Regexp(t,
+			`\AThe request timed out after 0\.\d+s \(maximum request time is 0\.050000s\).\z`,
+			recorder.Body.String())
+	}))
 }

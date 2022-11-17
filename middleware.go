@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -147,6 +148,65 @@ func (m *ContextContainerMiddleware) Wrapper(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, contextContainerContextKey{}, &ContextContainer{})
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+//
+// TimeoutMiddleware
+//
+
+const (
+	ErrMessageCanceled = "The request was canceled after %v (maximum request time is %v)."
+	ErrMessageTimeout  = "The request timed out after %v (maximum request time is %v)."
+)
+
+// TimeoutMiddleware injects a deadline into the request's context. Then in case
+// it's exceeded, it responds with a pretty 504 to the user.
+//
+// Note that in Go, the runtime will never actually kill anything if a deadline
+// is exceeded. Instead, low level packages like net/http or pgx are expected to
+// check the deadlines in their given contexts, and return an error in case it
+// was exceeded. In our stack, this error would then bubble back up to our
+// common transport infrastructure, where it'd be logged and emitted to Sentry,
+// then eventually make its way back here, where we send an error back.
+type TimeoutMiddleware struct {
+	timeout time.Duration
+}
+
+// NewTimeoutMiddleware initializes a new middleware instance.
+func NewTimeoutMiddleware(timeout time.Duration) *TimeoutMiddleware {
+	return &TimeoutMiddleware{timeout}
+}
+
+// Wrapper produces an http.HandlerFunc suitable to be placed into a middleware
+// stack.
+func (m *TimeoutMiddleware) Wrapper(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		ctx, cancel := context.WithTimeout(r.Context(), m.timeout)
+		defer func() {
+			// Get error before calling cancel below.
+			err := ctx.Err()
+
+			// Cancel should always be called whether the context timed out or
+			// not.
+			cancel()
+
+			var errMessage string
+			switch {
+			case errors.Is(err, context.Canceled):
+				errMessage = ErrMessageCanceled
+			case errors.Is(err, context.DeadlineExceeded):
+				errMessage = ErrMessageTimeout
+			}
+
+			if errMessage != "" {
+				w.WriteHeader(http.StatusGatewayTimeout)
+				_, _ = w.Write([]byte(fmt.Sprintf(errMessage, PrettyDuration(time.Since(start)), PrettyDuration(m.timeout))))
+			}
+		}()
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
