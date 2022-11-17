@@ -366,10 +366,8 @@ func (s *Server) handleIndex(ctx context.Context, r *http.Request) (*ServerRespo
 	return NewServerResponse(http.StatusOK, buf.Bytes(), nil), nil
 }
 
-var (
-	//go:embed index.tmpl.html
-	indexTmplData string
-)
+//go:embed index.tmpl.html
+var indexTmplData string
 
 func (s *Server) parseTemplates() error {
 	parse := func(name, data string) (*template.Template, error) {
@@ -377,7 +375,7 @@ func (s *Server) parseTemplates() error {
 		if err != nil {
 			return nil, xerrors.Errorf("error parsing template: %w", err)
 		}
-		return tmpl, err
+		return tmpl, nil
 	}
 
 	var err error
