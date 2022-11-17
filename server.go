@@ -102,6 +102,7 @@ func NewServer(logger *logrus.Logger, boardStore nsstore.BoardStore, denyList De
 	//
 
 	router.Use((&ContextContainerMiddleware{}).Wrapper)
+	router.Use(NewInspectableWriterMiddleware().Wrapper)
 
 	//
 	// Tier 1 middleware: Canonical log line.

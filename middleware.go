@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/xerrors"
 
 	"github.com/brandur/neospring/internal/util/stringutil"
 )
@@ -75,6 +77,12 @@ func (m *CanonicalLogLineMiddleware) Wrapper(next http.Handler) http.Handler {
 			"query_string": stringutil.SampleLong(r.URL.RawQuery),
 			"status":       ctxContainer.StatusCode,
 			"user_agent":   r.UserAgent(),
+		}
+
+		if inspectableWriter, ok := w.(*InspectableWriter); ok {
+			if inspectableWriter.StatusCode >= 400 { //nolint:usestdlibvars
+				logData["error_message"] = inspectableWriter.Body.String()
+			}
 		}
 
 		if m.logDataChan != nil {
@@ -149,6 +157,64 @@ func (m *ContextContainerMiddleware) Wrapper(next http.Handler) http.Handler {
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, contextContainerContextKey{}, &ContextContainer{})
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+//
+// InspectableWriterMiddleware
+//
+
+// InspectableWriter is a thin wrapper implementing the http.ResponseWriter
+// interface. The out-of-the-box writer makes it quite difficult to track
+// anything that happened with it after the fact; for example, after you write a
+// status code to it there's no way to find out later what that status was from
+// a post-response middleware. InspectableWriter solves this problem by tracking
+// various aspects of what happened during a request to make this information
+// available. This is used by components like CanonicalLogLineMiddleware to log
+// response information.
+type InspectableWriter struct {
+	http.ResponseWriter
+	StatusCode int
+	Body       bytes.Buffer
+}
+
+func (w *InspectableWriter) WriteHeader(status int) {
+	w.StatusCode = status
+	w.ResponseWriter.WriteHeader(status)
+}
+
+func (w *InspectableWriter) Write(b []byte) (int, error) {
+	if w.StatusCode == 0 {
+		// If no status was written by the time Write is called, ResponseWriter
+		// sets it to 200 automatically. Reflect that here too.
+		w.StatusCode = http.StatusOK
+	}
+
+	_, _ = w.Body.Write(b)
+
+	n, err := w.ResponseWriter.Write(b)
+	if err != nil {
+		return n, xerrors.Errorf("error writing response body: %w", err)
+	}
+
+	return n, nil
+}
+
+// InspectableWriterMiddleware injects an instance of InspectableWriter into
+// middlewares nested beneath it.
+type InspectableWriterMiddleware struct{}
+
+// NewInspectableWriterMiddleware initializes a new middleware instance.
+func NewInspectableWriterMiddleware() *InspectableWriterMiddleware {
+	return &InspectableWriterMiddleware{}
+}
+
+// Wrapper produces an http.HandlerFunc suitable to be placed into a middleware
+// stack.
+func (m *InspectableWriterMiddleware) Wrapper(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		inspectableWriter := &InspectableWriter{ResponseWriter: w}
+		next.ServeHTTP(inspectableWriter, r)
 	})
 }
 

@@ -80,6 +80,58 @@ func TestContextContainerMiddleware(t *testing.T) {
 	require.Equal(t, http.StatusCreated, ctxContainer.StatusCode)
 }
 
+func TestInspectableWriterMiddlewareWrapper(t *testing.T) {
+	var (
+		ctx               context.Context
+		handler           http.Handler
+		inspectableWriter *InspectableWriter
+		writeResponse     func(w http.ResponseWriter)
+	)
+
+	setup := func(test func(*testing.T)) func(*testing.T) {
+		return func(t *testing.T) {
+			t.Helper()
+
+			ctx = context.Background()
+
+			writeResponse = func(w http.ResponseWriter) {
+				w.WriteHeader(http.StatusCreated)
+				_, _ = w.Write([]byte("hello"))
+			}
+
+			handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				inspectableWriter = w.(*InspectableWriter)
+				writeResponse(w)
+			})
+			handler = NewInspectableWriterMiddleware().Wrapper(handler)
+
+			test(t)
+		}
+	}
+
+	t.Run("TracksStatus", setup(func(t *testing.T) {
+		recorder := httptest.NewRecorder()
+		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, req)
+
+		require.Equal(t, http.StatusCreated, inspectableWriter.StatusCode)
+		require.Equal(t, "hello", inspectableWriter.Body.String())
+	}))
+
+	t.Run("TracksDefaultStatus", setup(func(t *testing.T) {
+		writeResponse = func(w http.ResponseWriter) {
+			_, err := w.Write([]byte{})
+			require.NoError(t, err)
+		}
+
+		recorder := httptest.NewRecorder()
+		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
+		handler.ServeHTTP(recorder, req)
+
+		require.Equal(t, http.StatusOK, inspectableWriter.StatusCode)
+	}))
+}
+
 func TestTimeoutMiddlewareWrapper(t *testing.T) {
 	var (
 		ctx         context.Context
@@ -111,8 +163,7 @@ func TestTimeoutMiddlewareWrapper(t *testing.T) {
 		req := mustNewRequest(ctx, http.MethodGet, "https://example.com", nil, nil)
 		handler.ServeHTTP(recorder, req)
 
-		//nolint:bodyclose
-		require.Equal(t, http.StatusCreated, recorder.Result().StatusCode)
+		require.Equal(t, http.StatusCreated, recorder.Result().StatusCode) //nolint:bodyclose
 	}))
 
 	t.Run("HandlesCanceled", setup(func(t *testing.T) {
