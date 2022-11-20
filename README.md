@@ -15,7 +15,7 @@ A hosted version of this runs at [neospring.brandur.org](https://neospring.brand
     $ go build . && ./neospring
 
     $ curl http://localhost:4434/ab589f4dde9fce4180fcf42c7b05185b0a02a5d682e353fa39177995083e0583
-    this is some test content and it should probably be expanded upon
+    <p>Reality is that which, when you stop believing in it, doesn't go away.</p>
 
 Generate a new key:
 
