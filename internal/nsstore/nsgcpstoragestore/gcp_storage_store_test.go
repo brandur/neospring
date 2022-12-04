@@ -31,10 +31,18 @@ var sampleServiceAccountJSON string
 
 var stableTime = time.Date(2022, 11, 9, 10, 11, 12, 0, time.UTC)
 
+// For injecting a stable time into a server because eventually the sample key
+// we're using will expire, and if we were using `time.Now()`, that would start
+// failing all the tests.
+func stableTimeFunc() time.Time {
+	return stableTime
+}
+
 func TestGCPStorageStoreRead(t *testing.T) {
 	ctx := context.Background()
 	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 	store := NewGCPStorageStore(ctx, logger, sampleServiceAccountJSON, "neospring_board")
+	store.SetTimeNow(stableTimeFunc)
 
 	store.storageReader = func(_ context.Context, bucket, key string) (io.ReadCloser, error) {
 		require.Equal(t, "neospring_board", bucket)
@@ -97,6 +105,7 @@ func TestGCPStorageStorePut(t *testing.T) {
 	ctx := context.Background()
 	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
 	store := NewGCPStorageStore(ctx, logger, sampleServiceAccountJSON, "neospring_board")
+	store.SetTimeNow(stableTimeFunc)
 
 	store.storageWriter = func(ctx context.Context, bucket, key string) io.WriteCloser {
 		require.Equal(t, "neospring_board", bucket)

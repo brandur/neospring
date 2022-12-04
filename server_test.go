@@ -64,8 +64,12 @@ func TestServerHandleGetKey(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
+
 			store = nsmemorystore.NewMemoryStore(logger)
+			store.SetTimeNow(stableTimeFunc)
+
 			denyList = NewMemoryDenyList()
+
 			server = NewServer(logger, store, denyList, defaultPort)
 			server.timeNow = stableTimeFunc
 
@@ -191,8 +195,12 @@ func TestServerHandlePutKey(t *testing.T) {
 			t.Helper()
 
 			ctx = context.Background()
+
 			store = nsmemorystore.NewMemoryStore(logger)
+			store.SetTimeNow(stableTimeFunc)
+
 			denyList = NewMemoryDenyList()
+
 			server = NewServer(logger, store, denyList, defaultPort)
 			server.timeNow = stableTimeFunc
 
@@ -353,7 +361,9 @@ func TestServerRouter(t *testing.T) {
 	ctx := context.Background()
 	denyList := NewMemoryDenyList()
 	keyPair := nskey.MustParseKeyPairUnchecked(samplePrivateKey)
+
 	store := nsmemorystore.NewMemoryStore(logger)
+	store.SetTimeNow(stableTimeFunc)
 
 	server := NewServer(logger, store, denyList, defaultPort)
 	server.timeNow = stableTimeFunc
