@@ -144,7 +144,7 @@ func TestGCPStorageStorePut(t *testing.T) {
 
 // This is already well tested from `MemoryStore`, so here just do a trivial
 // test to make sure the loop starts up and shuts down.
-func TestGCPStorageStoreReapLoop(t *testing.T) {
+func TestGCPStorageStoreReapLoop(_ *testing.T) {
 	ctx := context.Background()
 	store := NewGCPStorageStore(ctx, logger, sampleServiceAccountJSON, "neospring_board")
 

@@ -71,7 +71,7 @@ jobs:
       - name: "Check: golangci-lint"
         uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.49
+          version: v1.52
 
   program_starts:
     runs-on: ubuntu-latest

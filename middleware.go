@@ -80,7 +80,7 @@ func (m *CanonicalLogLineMiddleware) Wrapper(next http.Handler) http.Handler {
 		}
 
 		if inspectableWriter, ok := w.(*InspectableWriter); ok {
-			if inspectableWriter.StatusCode >= 400 { //nolint:usestdlibvars
+			if inspectableWriter.StatusCode >= 400 {
 				logData["error_message"] = inspectableWriter.Body.String()
 			}
 		}

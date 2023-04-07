@@ -2,6 +2,6 @@ package randutil
 
 import "testing"
 
-func TestRandIntn(t *testing.T) {
+func TestRandIntn(_ *testing.T) {
 	_ = Intn(1000)
 }

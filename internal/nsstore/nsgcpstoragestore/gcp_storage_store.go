@@ -117,11 +117,7 @@ func (s *GCPStorageStore) Put(ctx context.Context, key string, board *nsstore.Bo
 
 	s.logger.Infof(s.name+": Stored key %q to GCP storage", key)
 
-	if err := s.memoryStore.Put(ctx, key, board); err != nil {
-		return err
-	}
-
-	return nil
+	return s.memoryStore.Put(ctx, key, board)
 }
 
 // For testing purposes only.

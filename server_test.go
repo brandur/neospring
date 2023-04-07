@@ -380,8 +380,8 @@ func TestServerRouter(t *testing.T) {
 		recorder := httptest.NewRecorder()
 		server.router.ServeHTTP(recorder, r)
 
-		res := recorder.Result()   //nolint:bodyclose
-		if res.StatusCode >= 400 { //nolint:usestdlibvars
+		res := recorder.Result() //nolint:bodyclose
+		if res.StatusCode >= 400 {
 			require.Failf(t, "Request failure", "Expected non-error status code, was %d with body: %s",
 				res.StatusCode,
 				recorder.Body.String(),
@@ -472,7 +472,7 @@ func TestIsTimestampOnly(t *testing.T) {
 
 func mustNewRequest(ctx context.Context, method, path string, muxVars map[string]string, body io.Reader) *http.Request {
 	r, _ := http.NewRequestWithContext(ctx, method, "http://spring83.example.com"+path, body)
-	r = mux.SetURLVars(r, muxVars) //nolint:contextcheck
+	r = mux.SetURLVars(r, muxVars)
 	return r
 }
 

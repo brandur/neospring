@@ -29,7 +29,7 @@ func NewMemoryStore(logger *logrus.Logger) *MemoryStore {
 	}
 }
 
-func (s *MemoryStore) Get(ctx context.Context, key string) (*nsstore.Board, error) {
+func (s *MemoryStore) Get(_ context.Context, key string) (*nsstore.Board, error) {
 	s.mut.RLock()
 	defer s.mut.RUnlock()
 
@@ -48,7 +48,7 @@ func (s *MemoryStore) Get(ctx context.Context, key string) (*nsstore.Board, erro
 	return board, nil
 }
 
-func (s *MemoryStore) Put(ctx context.Context, key string, board *nsstore.Board) error {
+func (s *MemoryStore) Put(_ context.Context, key string, board *nsstore.Board) error {
 	s.mut.Lock()
 	defer s.mut.Unlock()
 

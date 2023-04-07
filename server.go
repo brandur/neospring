@@ -354,7 +354,7 @@ func (s *Server) handlePutKey(ctx context.Context, r *http.Request) (*ServerResp
 	}), nil
 }
 
-func (s *Server) handleIndex(ctx context.Context, r *http.Request) (*ServerResponse, error) {
+func (s *Server) handleIndex(_ context.Context, _ *http.Request) (*ServerResponse, error) {
 	var buf bytes.Buffer
 
 	if err := s.indexTmpl.Execute(&buf, map[string]any{
